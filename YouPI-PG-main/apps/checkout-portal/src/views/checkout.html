@@ -5862,20 +5862,25 @@
           const sTitle = document.getElementById('successTitleText');
           if (sTitle) sTitle.textContent = 'UPI Payment Settled Successfully!';
           const sDesc = document.getElementById('successDescText');
+
+          // Safely format amount — server may return number or string
+          const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : Number(state?.amount || 0).toFixed(2);
+          const receiptPayId = data.paymentId || PAYMENT_ID;
+
           if (sDesc) sDesc.innerHTML = `
-            <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${data.amount.toFixed(2)} Paid to ${state?.merchantName || 'Merchant'}</div>
-            <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Bank UTR: <strong>${data.utr}</strong></div>
+            <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} Paid to ${state?.merchantName || 'Merchant'}</div>
+            <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Bank UTR: <strong>${data.utr || '-'}</strong></div>
             <div style="font-size:12px; color:#475569; line-height:1.6;">
               Payer: <strong>${escapeHtml(data.customer?.name || activeCustomer?.name || 'Customer')}</strong><br/>
               WhatsApp: <strong>+91 ${data.customer?.mobile || activeCustomer?.mobile || ''}</strong> · Email: <strong>${data.customer?.email || activeCustomer?.email || ''}</strong><br/>
-              Recorded in SQLite Native Database &amp; Persisted to File Storage (${data.receiptJsonFile || 'receipt.json'})
+              Payment ID: <code style="font-family:monospace; font-size:11px;">${receiptPayId}</code>
             </div>
             <div style="margin-top:16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-              <a href="/api/v1/payments/${PAYMENT_ID}/receipt" target="_blank" class="btn btn-primary btn-sm" style="background:#0b63e5; color:#fff; text-decoration:none; padding:8px 16px; border-radius:8px; font-weight:700; font-size:12px;">
-                📄 View / Download Receipt File
+              <a href="/api/v1/payments/${receiptPayId}/receipt" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; background:#0b63e5; color:#fff; text-decoration:none; padding:10px 18px; border-radius:9px; font-weight:700; font-size:12px; box-shadow:0 4px 14px rgba(11,99,229,.30);">
+                📄 View &amp; Download Receipt
               </a>
-              <button type="button" onclick="openDatabaseFilesModal()" class="btn btn-secondary btn-sm" style="font-size:12px; padding:8px 16px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">
-                📁 View Database Records &amp; Files
+              <button type="button" onclick="openDatabaseFilesModal()" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:10px 16px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700; color:#334155;">
+                📁 All Payment Records
               </button>
             </div>
           `;
