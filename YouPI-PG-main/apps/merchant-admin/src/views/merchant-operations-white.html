@@ -72,6 +72,27 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #0b63e5 rgba(11, 99, 229, 0.08);
+      padding-bottom: 3px;
+    }
+    .header-badges::-webkit-scrollbar {
+      height: 4px;
+    }
+    .header-badges::-webkit-scrollbar-track {
+      background: rgba(11, 99, 229, 0.06);
+      border-radius: 999px;
+    }
+    .header-badges::-webkit-scrollbar-thumb {
+      background: #0b63e5;
+      border-radius: 999px;
+    }
+    .header-badges > * {
+      flex-shrink: 0;
     }
     .status-pill {
       display: inline-flex;
@@ -334,10 +355,11 @@
             <th>Status</th>
             <th>UTR Ref</th>
             <th>Created / Settled At</th>
+            <th>Receipt</th>
           </tr>
         </thead>
         <tbody id="txTableBody">
-          <tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8">Loading real-time transactions from SQLite...</td></tr>
+          <tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8">Loading real-time transactions from SQLite...</td></tr>
         </tbody>
       </table>
     </div>
@@ -418,8 +440,13 @@
                   <td><strong>₹${(s.amount_paise / 100).toFixed(2)}</strong></td>
                   <td><span style="font-weight:600">${s.method}</span></td>
                   <td><span class="${isSuccess ? 'badge-success' : 'badge-queued'}">${s.status}</span></td>
-                  <td><code style="font-family:'Fira Code', monospace">${meta.utr || '-'}</code></td>
+                  <td><code style="font-family:'Fira Code', monospace">${meta.utr || meta.refId || '-'}</code></td>
                   <td style="color:#64748b; font-size:11px">${new Date(s.completed_at || s.created_at).toLocaleString()}</td>
+                  <td>
+                    <a href="/api/v1/payments/${s.id}/receipt" target="_blank" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:#0b63e5; text-decoration:none; background:#eff6ff; padding:3px 8px; border-radius:6px; border:1px solid #bfdbfe;">
+                      📄 View Receipt
+                    </a>
+                  </td>
                 </tr>
               `;
             }).join('');

@@ -80,6 +80,27 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: var(--blue) rgba(255, 255, 255, 0.08);
+      padding: 4px 2px 6px;
+    }
+    .header-actions::-webkit-scrollbar {
+      height: 4px;
+    }
+    .header-actions::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 999px;
+    }
+    .header-actions::-webkit-scrollbar-thumb {
+      background: var(--blue);
+      border-radius: 999px;
+    }
+    .header-actions > * {
+      flex-shrink: 0;
     }
     .status-pill {
       display: inline-flex;
