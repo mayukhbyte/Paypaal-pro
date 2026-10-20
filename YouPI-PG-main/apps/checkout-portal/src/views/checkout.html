@@ -5906,7 +5906,14 @@
           showOptionToast(`✓ Payment confirmed! UTR: ${data.utr}`);
           broadcastPaymentToMerchantOps({ paymentId: receiptPayId, orderId: data.orderId, amount: paidAmt, method: 'UPI', utr: data.utr, payer: activeCustomer?.name });
         } else {
-          showOptionToast(data.error || 'UPI Payment settlement failed.');
+          if (data.error === 'INSUFFICIENT_VAULT_BALANCE') {
+            // Show vault error prominently
+            const errMsg = `❌ Vault Insufficient!\n\nYou need ₹${Number(data.required).toFixed(2)} but only ₹${Number(data.available).toFixed(2)} is available in the vault.\n\nShortfall: ₹${Number(data.shortfall).toFixed(2)}\n\nPlease top up the vault from the admin console to process this payment.`;
+            alert(errMsg);
+            showOptionToast(`⚠️ Vault too low! Need ₹${Number(data.required).toFixed(2)}, have ₹${Number(data.available).toFixed(2)}`);
+          } else {
+            showOptionToast(data.error || data.message || 'UPI Payment settlement failed.');
+          }
         }
       } catch (err) {
         showOptionToast('Network error processing UPI payment: ' + err.message);
@@ -7137,6 +7144,8 @@
         }
 
         if (data.status === 'SUCCESS' || data.status === 'COMPLETED') {
+          _paymentCompleted = true; // Stop all polling immediately
+          sessionStorage.setItem('_ypg_payment_done_' + PAYMENT_ID, '1');
           closeProcessingModal();
           closeCancelPaymentModal();
           const bar = document.getElementById('paymentMethodSelectorBar');
@@ -7148,7 +7157,7 @@
           const footer = document.getElementById('ypgStickyFooter');
           if (footer) footer.style.display = 'none';
           const amtEl = document.getElementById('successAmountVal');
-          if (amtEl) amtEl.textContent = `₹${data.amount}`;
+          if (amtEl) amtEl.textContent = `₹${Number(data.amount).toFixed(2)}`;
 
           const isCodOrder = data.method === 'COD' || data.verificationTag === 'COD_ORDER_PLACED';
           const isCashCounter = data.method === 'CASH_COUNTER';
@@ -7157,24 +7166,57 @@
           const codApiBox = document.getElementById('successCodDevApiBox');
           const codApiUrl = document.getElementById('successCodDevApiUrl');
 
+          // Build stateless receipt URL
+          const rp = new URLSearchParams({
+            paymentId: data.paymentId || PAYMENT_ID,
+            amount: Number(data.amount).toFixed(2),
+            utr: data.referenceId || data.utr || data.verificationTag || '-',
+            method: data.method || 'UPI',
+            orderId: data.orderId || state?.orderId || '',
+            merchant: data.merchantName || state?.merchantName || 'MAYUKHUPI Showcase Store',
+            payer: activeCustomer?.name || 'Customer',
+            mobile: activeCustomer?.mobile || '',
+            email: activeCustomer?.email || '',
+            at: Date.now()
+          });
+          const receiptUrl = `/api/v1/receipt?${rp.toString()}`;
+
           if (isCodOrder) {
-            if (titleEl) titleEl.textContent = 'Order Placed (Cash on Delivery)!';
-            if (descEl) descEl.textContent = `Your order #${data.orderId || PAYMENT_ID.slice(-6)} was confirmed. Please keep ₹${data.amount} in cash ready for the courier agent upon arrival.`;
+            if (titleEl) titleEl.textContent = '✅ Order Placed (Cash on Delivery)!';
+            if (descEl) descEl.innerHTML = `
+              <div style="font-size:15px;font-weight:800;color:#15803d;margin-bottom:8px;">₹${Number(data.amount).toFixed(2)} — COD Order Confirmed</div>
+              <div style="font-size:13px;color:#475569;line-height:1.6;">Order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> placed successfully. Keep cash ready for the delivery agent.<br>
+              Ref: <code style="font-family:monospace;font-size:11px;color:#0b63e5;">${data.referenceId || '-'}</code></div>
+              <div style="margin-top:12px;"><a href="${receiptUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0b63e5;color:#fff;text-decoration:none;padding:9px 16px;border-radius:9px;font-weight:700;font-size:12px;">📄 View Receipt</a></div>
+            `;
             if (codApiBox && codApiUrl) {
               codApiBox.style.display = 'block';
               codApiUrl.textContent = `${API_BASE}/api/v1/orders/${data.orderId || PAYMENT_ID}/cod`;
             }
           } else if (isCashCounter) {
-            if (titleEl) titleEl.textContent = 'Cash Payment Confirmed!';
-            if (descEl) descEl.textContent = `Payment of ₹${data.amount} for Order #${data.orderId || PAYMENT_ID.slice(-6)} has been received and confirmed at the billing till.`;
+            if (titleEl) titleEl.textContent = '✅ Cash Payment Confirmed!';
+            if (descEl) descEl.innerHTML = `
+              <div style="font-size:15px;font-weight:800;color:#15803d;margin-bottom:8px;">₹${Number(data.amount).toFixed(2)} — Cash Received at Till</div>
+              <div style="font-size:13px;color:#475569;line-height:1.6;">Order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> confirmed at billing counter.<br>
+              Ref: <code style="font-family:monospace;font-size:11px;color:#0b63e5;">${data.referenceId || '-'}</code></div>
+              <div style="margin-top:12px;"><a href="${receiptUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0b63e5;color:#fff;text-decoration:none;padding:9px 16px;border-radius:9px;font-weight:700;font-size:12px;">📄 View Receipt</a></div>
+            `;
             if (codApiBox) codApiBox.style.display = 'none';
           } else {
-            if (titleEl) titleEl.textContent = 'Payment Successful!';
-            if (descEl) descEl.textContent = 'Your payment was automatically verified by MAYUKHUPI PG banking observers.';
+            if (titleEl) titleEl.textContent = '✅ Payment Verified & Settled!';
+            if (descEl) descEl.innerHTML = `
+              <div style="font-size:15px;font-weight:800;color:#15803d;margin-bottom:8px;">₹${Number(data.amount).toFixed(2)} — UPI Payment Settled</div>
+              <div style="font-size:13px;color:#475569;line-height:1.6;">Verified by MAYUKHUPI PG banking observers.<br>
+              Ref: <code style="font-family:monospace;font-size:11px;color:#0b63e5;">${data.referenceId || data.utr || '-'}</code></div>
+              <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="${receiptUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0b63e5;color:#fff;text-decoration:none;padding:9px 16px;border-radius:9px;font-weight:700;font-size:12px;">📄 View & Download Receipt</a>
+              </div>
+            `;
             if (codApiBox) codApiBox.style.display = 'none';
           }
 
           emitTriggerHook('PAYMENT_COMPLETED', { amount: data.amount, method: data.method, isCod: isCodOrder });
+          broadcastPaymentToMerchantOps({ paymentId: data.paymentId || PAYMENT_ID, orderId: data.orderId, amount: data.amount, method: data.method || 'UPI', utr: data.referenceId || data.utr, payer: activeCustomer?.name });
 
           try {
             window.parent.postMessage({
@@ -7188,7 +7230,7 @@
             btnReturn.hidden = false;
             btnReturn.href = data.returnUrl;
             if (window.parent === window) {
-              setTimeout(() => { window.location.href = data.returnUrl; }, 2000);
+              setTimeout(() => { window.location.href = data.returnUrl; }, 3000);
             }
           } else if (btnReturn) {
             btnReturn.hidden = true;

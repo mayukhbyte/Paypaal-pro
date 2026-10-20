@@ -5565,6 +5565,19 @@ app.post('/api/v1/checkout/:id/confirm-upi', (req, res) => {
     const orderId = session.order_id || `ORD-${id.slice(-6).toUpperCase()}`;
     const nowIso = new Date().toISOString();
 
+    // ─── Vault Balance Check ─────────────────────────────────────────────────
+    const vaultAvailable = store.vault?.available !== undefined ? store.vault.available : (store.vault?.amount || 999999);
+    if (finalAmt > vaultAvailable) {
+      return res.status(402).json({
+        success: false,
+        error: 'INSUFFICIENT_VAULT_BALANCE',
+        message: `❌ Insufficient vault balance. You need ₹${finalAmt.toFixed(2)} but only ₹${vaultAvailable.toFixed(2)} is available in the vault. Please top up the vault before processing this payment.`,
+        required: finalAmt,
+        available: vaultAvailable,
+        shortfall: finalAmt - vaultAvailable
+      });
+    }
+
     // Parse existing session metadata first
     let existingMeta = {};
     try { existingMeta = JSON.parse(session.metadata || '{}'); } catch {}
@@ -6513,6 +6526,31 @@ app.post('/api/v1/checkout/:id/confirm-cod', (req, res) => {
   const { details, customer } = req.body || {};
   const refId = `COD-MAYUKH-${Date.now().toString(36).toUpperCase()}`;
   const nowIso = new Date().toISOString();
+
+  // Get session for amount / order info + vault check
+  let amount = '0.00';
+  let orderId = `ORD-${id.slice(-6).toUpperCase()}`;
+  try {
+    const session = getOrCreateYoupiSession(id, {});
+    if (session) {
+      amount = (session.amount_paise / 100).toFixed(2);
+      orderId = session.order_id || orderId;
+    }
+  } catch {}
+
+  // ─── Vault Balance Check ─────────────────────────────────────────────────
+  const finalAmt = Number(amount);
+  const vaultAvailable = store.vault?.available !== undefined ? store.vault.available : (store.vault?.amount || 999999);
+  if (finalAmt > vaultAvailable) {
+    return res.status(402).json({
+      success: false,
+      error: 'INSUFFICIENT_VAULT_BALANCE',
+      message: `❌ Insufficient vault balance. You need ₹${finalAmt.toFixed(2)} but only ₹${vaultAvailable.toFixed(2)} is available. Please top up the vault before processing this payment.`,
+      required: finalAmt,
+      available: vaultAvailable,
+      shortfall: finalAmt - vaultAvailable
+    });
+  }
 
   // 1. Write to in-memory status store (always works on Vercel)
   _sessionStatusStore.set(id, {
