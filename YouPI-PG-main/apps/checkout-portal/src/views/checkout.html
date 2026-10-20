@@ -5904,6 +5904,7 @@
             </div>
           `;
           showOptionToast(`✓ Payment confirmed! UTR: ${data.utr}`);
+          broadcastPaymentToMerchantOps({ paymentId: receiptPayId, orderId: data.orderId, amount: paidAmt, method: 'UPI', utr: data.utr, payer: activeCustomer?.name });
         } else {
           showOptionToast(data.error || 'UPI Payment settlement failed.');
         }
@@ -6189,6 +6190,7 @@
 
         showOptionToast(`✓ PayPal payment confirmed! Capture: ${captureRef}`);
         emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'PAYPAL', captureId: captureRef });
+        broadcastPaymentToMerchantOps({ paymentId: receiptPayId, orderId: data.orderId, amount: paidAmt, method: 'PAYPAL', captureId: captureRef, payer: activeCustomer?.name });
       } catch (err) {
         console.error('confirmPaymentAsPaid error:', err);
         // Still try to show basic success if server call failed
@@ -6344,6 +6346,7 @@
 
           showOptionToast(`✓ COD order placed! Ref: ${data.referenceId}`);
           emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'COD', isCod: true });
+          broadcastPaymentToMerchantOps({ paymentId: data.paymentId, orderId: data.orderId, amount: paidAmt, method: 'COD', referenceId: data.referenceId, payer: activeCustomer?.name });
         } else {
           alert(data.error || 'Failed to place COD order');
           if (btn) {
@@ -6407,6 +6410,7 @@
 
           showOptionToast(`✓ Cash payment confirmed! Ref: ${data.referenceId}`);
           emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'CASH_COUNTER', isCod: false });
+          broadcastPaymentToMerchantOps({ paymentId: data.paymentId, orderId: data.orderId, amount: paidAmt, method: 'CASH_COUNTER', referenceId: data.referenceId, payer: activeCustomer?.name });
         } else {
           alert(data.error || 'Failed to confirm cash payment');
           if (btn) {
@@ -6623,6 +6627,10 @@
     }
 
     async function loadState() {
+      // CRITICAL: If payment is already done, NEVER call loadState again — it would wipe the success screen
+      if (_paymentCompleted) return;
+      // Also check sessionStorage as a backup (survives scope issues)
+      if (sessionStorage.getItem('_ypg_payment_done_' + PAYMENT_ID)) return;
       try {
         await DeviceIdentity.getOrRegister();
         const headers = getApiHeaders();
@@ -6717,6 +6725,39 @@
 
     // Global flag: set to true once any payment succeeds — stops polling from overwriting the success screen
     let _paymentCompleted = false;
+
+    // Broadcast payment to merchant-ops tab and localStorage (Vercel-compatible real-time)
+    function broadcastPaymentToMerchantOps(paymentData) {
+      try {
+        // 1. Mark session as done in sessionStorage (backup guard for loadState)
+        sessionStorage.setItem('_ypg_payment_done_' + PAYMENT_ID, '1');
+
+        // 2. Write to localStorage so merchant-ops page can read it
+        const existing = JSON.parse(localStorage.getItem('_ypg_confirmed_payments') || '[]');
+        const entry = {
+          id: paymentData.paymentId || PAYMENT_ID,
+          order_id: paymentData.orderId || state?.orderId || 'ORD-' + PAYMENT_ID.slice(-6).toUpperCase(),
+          amount_paise: Math.round(Number(paymentData.amount || state?.amount || 0) * 100),
+          status: 'SUCCESS',
+          method: paymentData.method || 'UPI',
+          metadata: JSON.stringify({ utr: paymentData.utr || paymentData.referenceId || paymentData.captureId || '-', payerName: paymentData.payer || activeCustomer?.name || 'Customer' }),
+          created_at: new Date().toISOString(),
+          completed_at: new Date().toISOString()
+        };
+        existing.unshift(entry);
+        if (existing.length > 50) existing.splice(50);
+        localStorage.setItem('_ypg_confirmed_payments', JSON.stringify(existing));
+
+        // 3. BroadcastChannel: instantly notify merchant-ops tab (same-origin)
+        try {
+          const ch = new BroadcastChannel('paypaal_payments');
+          ch.postMessage({ type: 'PAYMENT_CONFIRMED', payment: entry });
+          setTimeout(() => ch.close(), 500);
+        } catch {}
+      } catch (e) {
+        console.warn('broadcastPaymentToMerchantOps error:', e);
+      }
+    }
 
     function renderState(data) {
       // Don't let the polling overwrite an already-shown success screen
