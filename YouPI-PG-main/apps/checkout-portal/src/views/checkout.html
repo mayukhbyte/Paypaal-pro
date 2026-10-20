@@ -5867,6 +5867,24 @@
           const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : Number(state?.amount || 0).toFixed(2);
           const receiptPayId = data.paymentId || PAYMENT_ID;
 
+          // Build stateless receipt URL — works on Vercel (no server memory needed)
+          const rp = new URLSearchParams({
+            paymentId: receiptPayId,
+            amount: paidAmt,
+            utr: data.utr || '-',
+            method: 'UPI',
+            orderId: data.orderId || state?.orderId || '',
+            merchant: state?.merchantName || 'MAYUKHUPI Showcase Store',
+            payer: data.customer?.name || activeCustomer?.name || 'Customer',
+            mobile: '+91 ' + (data.customer?.mobile || activeCustomer?.mobile || ''),
+            email: data.customer?.email || activeCustomer?.email || '',
+            vpa: vpa || '',
+            bank: 'HDFC Bank (UPI)',
+            desc: state?.projectSummary || state?.title || '',
+            at: Date.now()
+          });
+          const receiptUrl = `/api/v1/receipt?${rp.toString()}`;
+
           if (sDesc) sDesc.innerHTML = `
             <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} Paid to ${state?.merchantName || 'Merchant'}</div>
             <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Bank UTR: <strong>${data.utr || '-'}</strong></div>
@@ -5876,7 +5894,7 @@
               Payment ID: <code style="font-family:monospace; font-size:11px;">${receiptPayId}</code>
             </div>
             <div style="margin-top:16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-              <a href="/api/v1/payments/${receiptPayId}/receipt" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; background:#0b63e5; color:#fff; text-decoration:none; padding:10px 18px; border-radius:9px; font-weight:700; font-size:12px; box-shadow:0 4px 14px rgba(11,99,229,.30);">
+              <a href="${receiptUrl}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; background:#0b63e5; color:#fff; text-decoration:none; padding:10px 18px; border-radius:9px; font-weight:700; font-size:12px; box-shadow:0 4px 14px rgba(11,99,229,.30);">
                 📄 View &amp; Download Receipt
               </a>
               <button type="button" onclick="openDatabaseFilesModal()" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:10px 16px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700; color:#334155;">
@@ -6102,19 +6120,84 @@
 
     async function confirmPaymentAsPaid(method, details) {
       try {
-        await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-paypal`, {
+        const res = await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-paypal`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method, details, deviceId: DeviceIdentity?.currentDeviceId })
+          headers: getApiHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ method, details, customer: activeCustomer, deviceId: DeviceIdentity?.currentDeviceId })
         });
-      } catch {}
-      hideAllContent();
-      const vSucc = document.getElementById('viewSuccessContent');
-      if (vSucc) vSucc.hidden = false;
-      const sTitle = document.getElementById('successTitleText');
-      if (sTitle) sTitle.textContent = 'Payment Completed with PayPal!';
-      const sDesc = document.getElementById('successDescText');
-      if (sDesc) sDesc.textContent = `Order ${state?.orderId || ''} settled via PayPal. Capture ID: ${details?.captureId || 'OK'}`;
+        const data = await res.json();
+
+        hideAllContent();
+        const bar = document.getElementById('paymentMethodSelectorBar');
+        if (bar) bar.style.display = 'none';
+        const footer = document.getElementById('ypgStickyFooter');
+        if (footer) footer.style.display = 'none';
+
+        const vSucc = document.getElementById('viewSuccessContent');
+        if (vSucc) vSucc.hidden = false;
+
+        const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : Number(state?.amount || 0).toFixed(2);
+        const captureRef = data.captureId || details?.captureId || 'OK';
+        const receiptPayId = data.paymentId || PAYMENT_ID;
+
+        // Build stateless receipt URL
+        const rp2 = new URLSearchParams({
+          paymentId: receiptPayId,
+          amount: paidAmt,
+          captureId: captureRef,
+          utr: captureRef,
+          method: 'PAYPAL',
+          orderId: data.orderId || state?.orderId || '',
+          merchant: state?.merchantName || 'MAYUKHUPI Showcase Store',
+          payer: activeCustomer?.name || 'Customer',
+          mobile: activeCustomer?.mobile || '',
+          email: activeCustomer?.email || '',
+          bank: 'PayPal Rail',
+          desc: state?.projectSummary || state?.title || '',
+          at: Date.now()
+        });
+        const receiptUrl2 = `/api/v1/receipt?${rp2.toString()}`;
+
+        const amtEl = document.getElementById('successAmountVal');
+        if (amtEl) amtEl.textContent = `₹${paidAmt}`;
+
+        const sTitle = document.getElementById('successTitleText');
+        if (sTitle) sTitle.textContent = 'Payment Completed with PayPal!';
+
+        const sDesc = document.getElementById('successDescText');
+        if (sDesc) sDesc.innerHTML = `
+          <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} Paid via PayPal</div>
+          <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Capture ID: <strong style="color:#0b63e5">${captureRef}</strong></div>
+          <div style="font-size:12px; color:#475569; line-height:1.6; margin-bottom:12px;">
+            Order: <strong>#${data.orderId || state?.orderId || PAYMENT_ID.slice(-6)}</strong><br/>
+            ${activeCustomer?.name ? `Payer: <strong>${escapeHtml(activeCustomer.name)}</strong><br/>` : ''}
+            ${activeCustomer?.email ? `Email: <strong>${escapeHtml(activeCustomer.email)}</strong>` : ''}
+          </div>
+          <div style="margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <a href="${receiptUrl2}" target="_blank" rel="noopener"
+               style="display:inline-flex; align-items:center; gap:6px; background:#0b63e5; color:#fff; text-decoration:none; padding:10px 18px; border-radius:9px; font-weight:700; font-size:12px; box-shadow:0 4px 14px rgba(11,99,229,.30);">
+              📄 View &amp; Download Receipt
+            </a>
+            <button type="button" onclick="openDatabaseFilesModal()"
+               style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:10px 16px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700; color:#334155;">
+              📁 All Payment Records
+            </button>
+          </div>
+        `;
+
+        showOptionToast(`✓ PayPal payment confirmed! Capture: ${captureRef}`);
+        emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'PAYPAL', captureId: captureRef });
+      } catch (err) {
+        console.error('confirmPaymentAsPaid error:', err);
+        // Still try to show basic success if server call failed
+        hideAllContent();
+        const vSucc = document.getElementById('viewSuccessContent');
+        if (vSucc) vSucc.hidden = false;
+        const sTitle = document.getElementById('successTitleText');
+        if (sTitle) sTitle.textContent = 'Payment Completed with PayPal!';
+        const sDesc = document.getElementById('successDescText');
+        if (sDesc) sDesc.textContent = `Order ${state?.orderId || ''} settled via PayPal. Capture ID: ${details?.captureId || 'OK'}`;
+      }
     }
 
     async function selectPaymentMethod(method) {
