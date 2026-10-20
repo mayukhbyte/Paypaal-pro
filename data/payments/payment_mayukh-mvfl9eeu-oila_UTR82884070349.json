@@ -1,0 +1,28 @@
+{
+  "paymentId": "mayukh-mvfl9eeu-oila",
+  "orderId": "ORD-APPR-c-8812",
+  "utr": "UTR82884070349",
+  "amount": 32300,
+  "currency": "INR",
+  "status": "SUCCESS",
+  "method": "UPI",
+  "senderVpa": "9999999999@ybl",
+  "bankName": "HDFC Bank",
+  "merchantName": "OpticWave Networks",
+  "projectSummary": "Anomalies detected in dual cross-audit: Invoiced at ₹9,775/unit for 12 units vs contracted ₹8,500/unit for 10 units. Human review required before payout release.",
+  "payer": {
+    "name": "Mayukh",
+    "mobile": "9999999999",
+    "email": "ixb21.mayukhbhattacharjee@gmail.com",
+    "isPhoneVerified": true
+  },
+  "timestamps": {
+    "initiated": "2026-10-19T18:29:25.687Z",
+    "completed": "2026-10-20T07:54:44.070Z"
+  },
+  "verification": {
+    "channel": "WHATSAPP_OTP_EMAIL",
+    "guardrailScore": 100,
+    "cryptographicHash": "SHA256-mvge114a-7dab3b15"
+  }
+}

@@ -45,7 +45,7 @@ function clearSession(chatId) { sessions[chatId] = { step: null, data: {} }; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(text) { return text; } // Telegram supports markdown
-function money(n) { return `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+function money(n) { return `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 
 async function sendMsg(chatId, text, opts = {}) {
   return bot.sendMessage(chatId, text, { parse_mode: 'Markdown', ...opts });
@@ -76,33 +76,53 @@ bot.onText(/\/help/, async (msg) => {
   → Run a guarded PayPal payment
   → Example: \`/pay mandate-abc AWS 250\`
 
+💼 *Freelancer CFO*
+/cfo <prompt> — Autonomous treasury, invoicing, FX parity & reminders
+  → Examples:
+    /cfo Invoice Acme Corp 2500 EUR
+    /cfo Convert 1500 USD to EUR
+    /cfo Draft payment reminder for late receivables
+    /cfo What is my tax reserve and runway?
+
 📊 *Info*
 /mandates — List active mandates
 /vault — Vault balance & committed spend
 /dashboard — Command-centre live stats
 /pending — Pending approval queue
-/approve \`<approvalId>\` — Approve an item
+/approve `< approvalId > ` — Approve an item
 
 🤝 *FairShare*
 /fairshare — Interactive group expense split
 
 All payments go through the *real guardrail → PayPal pipeline*.`);
 });
-// ── /cfo ────────────────────────────────────────────────────────────────
-  bot.onText(//cfo (.+)/, async (msg, match) => {
+
+// ─── /cfo /freelancer ─────────────────────────────────────────────────────────
+bot.onText(/\/(?:cfo|freelancer)(?:\s+(.+))?/i, async (msg, match) => {
   const chatId = msg.chat.id;
-  const prompt = match[1];
+  const prompt = (match[1] || '').trim();
+  if (!prompt) {
+    return sendMsg(chatId, `💼 *Freelancer CFO Treasury Command*
+
+I execute autonomous treasury operations directly from Telegram:
+
+• \`/cfo Invoice Acme Corp 2500 EUR\` — Create PayPal formal invoice
+• \`/cfo Convert 1500 USD to EUR\` — Live Google parity currency exchange
+• \`/cfo Draft payment reminder for late receivables\` — Executive reminder
+• \`/cfo What is my tax reserve and runway?\` — Treasury overview`);
+  }
   await sendMsg(chatId, `⚙️ *Processing with Freelancer CFO…*`);
 
   try {
     const result = await core.cfoChat(prompt);
-    await sendMsg(chatId, result.response);
+    await sendMsg(chatId, result.response || '✅ Operation completed by Freelancer CFO.');
   } catch (e) {
-    await sendMsg(chatId, `❌ CFO error: ${e.message}`);
+    await sendMsg(chatId, `❌ Freelancer CFO error: ${e.message}`);
   }
 });
-//── /mandates ────────────────────────────────────────────────────────────────
-bot.onText(//mandates/, async (msg) => {
+
+// ─── /mandates ────────────────────────────────────────────────────────────────
+bot.onText(/\/mandates/, async (msg) => {
   const chatId = msg.chat.id;
   try {
     const mandates = await core.listMandates();
@@ -112,17 +132,11 @@ bot.onText(//mandates/, async (msg) => {
     const lines = mandates.map(m => {
       const pct = m.spendLimit > 0 ? Math.round((m.currentSpend / m.spendLimit) * 100) : 0;
       const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
-      return '*${m.name}* (`${m.id}`)
-${bar} ${pct}%
-Spent: ${money(m.currentSpend)} / ${money(m.spendLimit)} · Status: ${m.status}';
+      return `*${m.name}* (\`${m.id}\`)\n${bar} ${pct}%\nSpent: ${money(m.currentSpend)} / ${money(m.spendLimit)} · Status: ${m.status}`;
     });
-    await sendMsg(chatId, '*🛡️ Active Mandates (${mandates.length})*
-
-${lines.join('
-
-')}');
+    await sendMsg(chatId, `*🛡️ Active Mandates (${mandates.length})*\n\n${lines.join('\n\n')}`);
   } catch (e) {
-    return sendMsg(chatId, '⚠️ Could not fetch mandates: ${e.message}');
+    return sendMsg(chatId, `⚠️ Could not fetch mandates: ${e.message}`);
   }
 });
 
@@ -201,7 +215,7 @@ bot.onText(/\/pay\s+(\S+)\s+(\S+)\s+(\d+(?:\.\d+)?)(?:\s+(\S+))?/, async (msg, m
       mandateId, merchant, amount, currency,
       description: `Telegram bot payment to ${merchant}`,
       category: 'bot-initiated',
-      source: 'Telegram'
+      source: 'telegram_bot'
     });
 
     if (result.ok) {
@@ -304,7 +318,7 @@ bot.on('message', async (msg) => {
       const result = await core.executePayment({
         mandateId, merchant, amount, currency: 'USD',
         description: `Telegram bot payment to ${merchant}`,
-        category: 'bot-initiated', source: 'Telegram'
+        category: 'bot-initiated', source: 'telegram_bot'
       });
 
       if (result.ok) {

@@ -46,31 +46,36 @@ async function evaluateGuardrails(mandateId, merchant, amount, category) {
   });
 }
 
-async function createPayPalOrder(amount, currency, description, mandateId, merchant) {
+async function createPayPalOrder(amount, currency, description, mandateId, merchant, source) {
   return apiCall('POST', '/api/paypal/create-order', {
     amount: Number(amount), currency: currency || 'USD',
-    description, mandateId, merchant
+    description, mandateId, merchant,
+    source: source || 'bot'
   });
 }
 
-async function capturePayPalOrder(orderId, mandateId) {
-  return apiCall('POST', `/api/paypal/capture-order/${orderId}`, { mandateId });
+async function capturePayPalOrder(orderId, mandateId, source) {
+  return apiCall('POST', `/api/paypal/capture-order/${orderId}`, {
+    mandateId,
+    source: source || 'bot'
+  });
 }
 
 async function executePayment({ mandateId, merchant, amount, currency, description, category, source }) {
   const t0 = Date.now();
+  const normalizedSource = String(source || 'bot').toLowerCase().includes('whatsapp') ? 'whatsapp_bot' : 'telegram_bot';
 
   const guard = await evaluateGuardrails(mandateId, merchant, amount, category);
   if (!guard.allowed) {
     return { ok: false, stage: 'guardrail', reason: guard.reason, decision: guard.decision, latency: `${Date.now() - t0}ms` };
   }
 
-  const order = await createPayPalOrder(amount, currency, description || `Payment via ${source}`, mandateId, merchant);
+  const order = await createPayPalOrder(amount, currency, description || `Payment via ${normalizedSource}`, mandateId, merchant, normalizedSource);
   if (!order.id) {
     return { ok: false, stage: 'create-order', reason: 'PayPal order creation failed', latency: `${Date.now() - t0}ms` };
   }
 
-  const capture = await capturePayPalOrder(order.id, mandateId);
+  const capture = await capturePayPalOrder(order.id, mandateId, normalizedSource);
   const latency = `${((Date.now() - t0) / 1000).toFixed(2)}s`;
 
   if (capture.status === 'COMPLETED') {
@@ -78,7 +83,7 @@ async function executePayment({ mandateId, merchant, amount, currency, descripti
       ok: true, orderId: order.id, captureId: capture.id, status: 'COMPLETED',
       amount: capture.amount?.value || amount,
       currency: capture.amount?.currency_code || currency || 'USD',
-      latency, source
+      latency, source: normalizedSource
     };
   }
   return { ok: false, stage: 'capture', reason: `Capture status: ${capture.status}`, orderId: order.id, latency };
@@ -97,11 +102,6 @@ async function approveItem(id) {
 async function fairshareCalculate(participants, items, context) {
   return apiCall('POST', '/api/fairshare/calculate', { participants, items, context });
 }
-
-module.exports = {
-  executePayment, listMandates, getVault, getPendingApprovals,
-  approveItem, getDashboard, fairshareCalculate, apiCall
-};
 
 async function cfoChat(prompt) {
   return apiCall('POST', '/api/ai/cfo-chat', { prompt });

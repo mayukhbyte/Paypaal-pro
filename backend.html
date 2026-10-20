@@ -1,0 +1,1331 @@
+<!doctype html>
+<!-- @src-type: component -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mandate | Real-Time Backend &amp; Developer Console</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #111726;
+      --surface-low: #151d30;
+      --surface-mid: #1c273e;
+      --border: #222d42;
+      --border-soft: #182236;
+      --text: #f1f5fd;
+      --muted: #8b99b2;
+      --blue: #3b82f6;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #8b5cf6;
+      --code-bg: #0b0f19;
+      font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 68px;
+      padding: 0 24px;
+      background: rgba(17, 23, 38, 0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .brand-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--blue);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-family: 'Manrope', sans-serif;
+    }
+    .brand-title strong {
+      font-family: 'Manrope', sans-serif;
+      font-size: 15px;
+      display: block;
+    }
+    .brand-title small {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .02em;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+    .btn-secondary {
+      background: var(--surface-low);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover {
+      background: var(--surface-mid);
+    }
+    .btn-paypal {
+      background: #ffc439;
+      color: #111;
+      border-color: #e2aa27;
+      font-weight: 800;
+    }
+    .btn-paypal:hover {
+      background: #f4b82d;
+    }
+    main {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+    }
+    .vitals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .vital-title {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .vital-value {
+      font-family: 'Manrope', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .vital-desc {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-title h2 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 16px;
+      letter-spacing: -.02em;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 1024px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+    .endpoint-list {
+      display: grid;
+      gap: 8px;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .category-kicker {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 10px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .category-kicker::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border-soft);
+    }
+    .endpoint-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--surface-low);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+    }
+    .endpoint-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .method-tag {
+      padding: 3px 6px;
+      border-radius: 5px;
+      font-family: 'Fira Code', monospace;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .method-get { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .method-post { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .method-patch { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .method-delete { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .endpoint-path {
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .endpoint-desc {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .console-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .console-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .console-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      color: #93c5fd;
+      min-height: 260px;
+      max-height: 600px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border-soft);
+      vertical-align: middle;
+    }
+    .form-inline {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .form-inline input, .form-inline select {
+      flex: 1;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: #fff;
+      font-size: 12px;
+      font-family: 'Fira Code', monospace;
+    }
+    .chip {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .chip-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .chip-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .chip-red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .chip-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/backend" class="brand-wrap">
+      <div class="brand-badge">&gt;_</div>
+      <div class="brand-title">
+        <strong>Mandate Real-Time Backend &amp; Developer Console</strong>
+        <small>Node.js Express 5 · PayPal Server SDK · Live Runtime SSE Stream</small>
+      </div>
+    </a>
+    <div class="header-actions">
+      <span class="status-pill" id="live-badge"><span class="status-dot"></span>REAL-TIME SSE LIVE</span>
+      <a href="/" class="btn btn-secondary">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:-1px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Open Web App GUI
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Server Vitals -->
+    <section class="vitals-grid">
+      <div class="card">
+        <div class="vital-title">HTTP Host &amp; Port</div>
+        <div class="vital-value" id="vital-host">localhost:3000</div>
+        <div class="vital-desc">Live Express API &amp; Web App</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">PayPal SDK Status</div>
+        <div class="vital-value" id="vital-paypal" style="color:var(--amber)">Sandbox Active</div>
+        <div class="vital-desc" id="vital-paypal-desc">Instant sandbox order tokens</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">Clinical Triage &amp; Vitals</div>
+        <div class="vital-value" id="vital-vitals" style="color:var(--red)">Streaming (5s)</div>
+        <div class="vital-desc" id="vital-vitals-desc">72 bpm · 98% SpO2 · 120/80</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">Inventory Store</div>
+        <div class="vital-value" id="vital-inventory">3 SKUs Live</div>
+        <div class="vital-desc">GPU &amp; Server Hardware Warehouse</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">Default Vault Reserve</div>
+        <div class="vital-value" id="vital-vault" style="color:var(--green)">$50,000.00</div>
+        <div class="vital-desc" id="vital-vault-desc">Autonomous Treasury Capacity</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">Authenticated Users Store</div>
+        <div class="vital-value" id="vital-users" style="color:var(--blue)">1 User Live</div>
+        <div class="vital-desc" id="vital-users-desc">OAuth 2.0 &amp; Credentials DB</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">Developer Escrow</div>
+        <div class="vital-value" id="vital-escrow">3-Stage Active</div>
+        <div class="vital-desc">Evidence ↔ Authorize ↔ PayPal</div>
+      </div>
+      <div class="card">
+        <div class="vital-title">Live Server Uptime</div>
+        <div class="vital-value" id="vital-uptime">0m 00s</div>
+        <div class="vital-desc">Node.js Engine v24</div>
+      </div>
+    </section>
+
+    <!-- Interactive API Playground & JSON Output -->
+    <div class="two-col">
+      <section class="card">
+        <div class="section-title">
+          <h2>REST Endpoints &amp; Real-Time Tester</h2>
+          <button class="btn btn-secondary btn-sm" onclick="resetState()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-1px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reset Store
+          </button>
+        </div>
+        <div class="endpoint-list">
+
+          <!-- Core Endpoints -->
+          <div class="category-kicker">Core System &amp; Telemetry</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/health</div>
+                <div class="endpoint-desc">Backend health &amp; PayPal status</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/health')">Execute</button>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/dashboard</div>
+                <div class="endpoint-desc">Live command center budget, latency &amp; rails</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/dashboard')">Execute</button>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/mandates</div>
+                <div class="endpoint-desc">Agent spend mandates &amp; budget limits</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/mandates')">Execute</button>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/approvals</div>
+                <div class="endpoint-desc">Human-in-the-loop escalated approvals queue</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/approvals')">Execute</button>
+          </div>
+
+          <!-- Autonomous Vault Reserve Management -->
+          <div class="category-kicker">Autonomous Vault Reserve Management</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/vault</div>
+                <div class="endpoint-desc">Current default vault reserve capacity and telemetry</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/vault')">Execute</button>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/vault</div>
+                  <div class="endpoint-desc">Update default vault capacity (e.g. $50,000 / $100,000)</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <input id="test-vault-input" type="number" min="1000" step="5000" value="50000" style="padding:4px 8px; font-size:11px; background:var(--code-bg); border:1px solid var(--border); border-radius:4px; color:var(--text); width:110px">
+              <button class="btn btn-primary btn-sm" onclick="triggerVaultUpdate()">Update Vault Reserve</button>
+            </div>
+          </div>
+
+          <!-- User Authentication & OAuth 2.0 (Backend Data) -->
+          <div class="category-kicker">User Authentication &amp; OAuth 2.0 (Backend Data)</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/auth/users</div>
+                <div class="endpoint-desc">List all registered &amp; authenticated users in backend DB</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/auth/users')">Execute</button>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/auth/login</div>
+                  <div class="endpoint-desc">Allow all with correct email syntax &amp; password</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <input id="test-auth-email" type="email" placeholder="name@domain.com" value="lead.operator@mandate.finance" style="padding:4px 8px; font-size:11px; background:var(--code-bg); border:1px solid var(--border); border-radius:4px; color:var(--text); width:150px">
+              <input id="test-auth-pass" type="password" placeholder="Password" value="securePass2026" style="padding:4px 8px; font-size:11px; background:var(--code-bg); border:1px solid var(--border); border-radius:4px; color:var(--text); width:90px">
+              <button class="btn btn-primary btn-sm" onclick="triggerAuthLoginTest()">Login &amp; Save</button>
+            </div>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/auth/oauth</div>
+                  <div class="endpoint-desc">OAuth 2.0 Provider Sign-In (Google, PayPal, GitHub)</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <select id="test-oauth-provider" style="padding:4px 8px; font-size:11px; background:var(--code-bg); border:1px solid var(--border); border-radius:4px; color:var(--text)">
+                <option value="google">Google OAuth 2.0</option>
+                <option value="paypal">PayPal Connect OAuth</option>
+                <option value="github">GitHub OAuth 2.0</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="triggerOAuthTest()">Simulate OAuth Login</button>
+            </div>
+          </div>
+
+          <!-- Inventory Agent -->
+          <div class="category-kicker">Autonomous Inventory Agent</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/inventory</div>
+                <div class="endpoint-desc">Server warehouse stock levels &amp; telemetry thresholds</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/inventory')">Execute</button>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/inventory/checkout</div>
+                  <div class="endpoint-desc">Execute Restock via PayPal Checkout (+5 units)</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <select id="inv-checkout-sku">
+                <option value="NV-H100-80G">NVIDIA H100 80GB GPU ($28,500)</option>
+                <option value="DEL-R760-2U">Dell PowerEdge R760 2U ($12,450)</option>
+                <option value="CIS-C9300-48">Cisco Catalyst 9300 Switch ($4,800)</option>
+              </select>
+              <button class="btn btn-paypal btn-sm" onclick="triggerInventoryCheckout()">PayPal Checkout</button>
+            </div>
+          </div>
+
+          <!-- Developer Escrow -->
+          <div class="category-kicker">Developer Bounty Escrow (3-Stage Workflow)</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/escrow</div>
+                <div class="endpoint-desc">Milestone contracts across all 3 release stages</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/escrow')">Execute</button>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/escrow/:id/{evidence | authorize | checkout}</div>
+                  <div class="endpoint-desc">Advance contract through 3 stages to PayPal payout</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <select id="escrow-test-id">
+                <option value="escrow-01">escrow-01: Zero-Knowledge Webhook ($1,850)</option>
+                <option value="escrow-02">escrow-02: Telemetry Pipeline ($2,400)</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="triggerEscrowStage1()">1. Evidence</button>
+              <button class="btn btn-secondary btn-sm" onclick="triggerEscrowStage2()">2. Authorize</button>
+              <button class="btn btn-paypal btn-sm" onclick="triggerEscrowStage3()">3. PayPal</button>
+            </div>
+          </div>
+
+          <!-- Clinical Triage & Billing -->
+          <div class="category-kicker">Clinical Triage &amp; Medical Billing</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/triage</div>
+                <div class="endpoint-desc">Live patient intake queue &amp; bedside sensor stats</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/triage')">Execute</button>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/triage/:id/{assess | invoice | pay}</div>
+                  <div class="endpoint-desc">Clinical assessment &rarr; Copay invoice &rarr; PayPal capture</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <select id="triage-test-id">
+                <option value="trg-101">trg-101: Eleanor Vance ($35 Copay)</option>
+                <option value="trg-102">trg-102: Marcus Sterling ($75 Copay)</option>
+                <option value="trg-103">trg-103: Sophia Rodriguez ($150 Copay)</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="triggerTriageAssess()">Assess</button>
+              <button class="btn btn-secondary btn-sm" onclick="triggerTriageInvoice()">Invoice</button>
+              <button class="btn btn-paypal btn-sm" onclick="triggerTriagePay()">PayPal Pay</button>
+            </div>
+          </div>
+
+          <!-- Autonomous Dispute Resolver -->
+          <div class="category-kicker">Autonomous Dispute Resolver</div>
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/ai/draft-dispute</div>
+                  <div class="endpoint-desc">AI seller protection rebuttal &amp; tracking evidence</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <input type="text" id="dispute-ref" value="TX-SANDBOX-8491" placeholder="Transaction Ref">
+              <input type="text" id="dispute-tracking" value="1Z999AA10123456784" placeholder="Tracking #">
+              <button class="btn btn-primary btn-sm" onclick="triggerDisputeRebuttal()">Draft Rebuttal</button>
+            </div>
+          </div>
+
+          <!-- Small-Business Procurement -->
+          <div class="category-kicker">Small-Business Procurement Anomaly Scanner</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/procurement/scans</div>
+                <div class="endpoint-desc">Verified dual-document scan history ledger</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/procurement/scans')">Execute</button>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-post">POST</span>
+              <div>
+                <div class="endpoint-path">/api/procurement/scan</div>
+                <div class="endpoint-desc">Cross-audit Document 1 (Invoice) ↔ Document 2 (PO)</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="triggerProcurementScan()">Run Anomaly Scan</button>
+          </div>
+
+          <!-- Freelancer CFO & Live FX -->
+          <div class="category-kicker">Freelancer CFO &amp; Live Currency Parity</div>
+          <div class="endpoint-item">
+            <div class="endpoint-meta">
+              <span class="method-tag method-get">GET</span>
+              <div>
+                <div class="endpoint-path">/api/rates?base=USD</div>
+                <div class="endpoint-desc">Live Google Finance &amp; Interbank exchange rates</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="fetchApi('/api/rates?base=USD')">Execute</button>
+          </div>
+
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/fx/convert</div>
+                  <div class="endpoint-desc">Real-time cross-currency market conversion</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <input type="number" id="fx-test-amount" value="1000" style="max-width:110px">
+              <select id="fx-test-from" style="max-width:100px">
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="INR">INR</option>
+                <option value="JPY">JPY</option>
+              </select>
+              <select id="fx-test-to" style="max-width:100px">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="INR">INR</option>
+                <option value="JPY">JPY</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="triggerFxConvert()">Convert</button>
+            </div>
+          </div>
+
+          <!-- PayPal Order -->
+          <div class="category-kicker">PayPal Sandbox Rails</div>
+          <div class="endpoint-item" style="flex-direction:column; align-items:stretch">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div class="endpoint-meta">
+                <span class="method-tag method-post">POST</span>
+                <div>
+                  <div class="endpoint-path">/api/paypal/create-order</div>
+                  <div class="endpoint-desc">Create PayPal sandbox order with guardrail checks</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-inline">
+              <input type="text" id="order-merchant" value="RunPod GPU Cloud" placeholder="Merchant">
+              <input type="number" id="order-amount" value="350.00" placeholder="Amount">
+              <button class="btn btn-paypal btn-sm" onclick="triggerTestOrder()">Create Order</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Live JSON Response Console -->
+      <section class="card console-panel">
+        <div class="console-head">
+          <div class="vital-title">LIVE JSON RESPONSE CONSOLE</div>
+          <span style="font-size:11px; color:var(--muted)" id="response-status">Status: 200 OK</span>
+        </div>
+        <div class="console-box" id="json-viewer">// Click any endpoint button above to inspect live backend JSON payloads and real-time execution tokens...</div>
+      </section>
+    </div>
+
+    <!-- Live Data Stores: Inventory, Escrow, Triage -->
+    <div class="two-col">
+      <!-- Autonomous Inventory Store -->
+      <section class="card">
+        <div class="section-title">
+          <h2>Live Inventory Warehouse (Hardware Agent)</h2>
+          <span class="chip chip-green" id="inv-badge">Real-Time Sync</span>
+        </div>
+        <div class="table-wrap">
+          <table id="inventory-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Hardware Item</th>
+                <th>Stock / Min</th>
+                <th>Status</th>
+                <th>Supplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="5" style="color:var(--muted); text-align:center">Loading inventory...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Developer Escrow Contracts -->
+      <section class="card">
+        <div class="section-title">
+          <h2>Developer Bounty Escrow (3-Stage Workflow)</h2>
+          <span class="chip chip-blue" id="escrow-badge">Smart Ledgers</span>
+        </div>
+        <div class="table-wrap">
+          <table id="escrow-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Developer &amp; Bounty</th>
+                <th>Amount</th>
+                <th>Stage &amp; Payout Status</th>
+                <th>Verification</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="5" style="color:var(--muted); text-align:center">Loading contracts...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Clinical Triage Queue -->
+    <section class="card">
+      <div class="section-title">
+        <h2>Clinical Triage &amp; Medical Billing (Sensor Stream)</h2>
+        <span class="chip chip-red" id="triage-badge">Live Sensor Telemetry</span>
+      </div>
+      <div class="table-wrap">
+        <table id="triage-table">
+          <thead>
+            <tr>
+              <th>Patient &amp; Ref</th>
+              <th>Tier</th>
+              <th>Bedside Vitals (HR · BP · SpO2 · Temp)</th>
+              <th>Target &amp; Copay</th>
+              <th>Status</th>
+              <th>PayPal Order / Invoice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="6" style="color:var(--muted); text-align:center">Loading triage queue...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Procurement Scans -->
+    <section class="card">
+      <div class="section-title">
+        <h2>Dual-Document Procurement Anomaly Scans (Verified Ledger)</h2>
+        <span class="chip chip-amber" id="procurement-badge">Audit Active</span>
+      </div>
+      <div class="table-wrap">
+        <table id="procurement-table">
+          <thead>
+            <tr>
+              <th>Scan ID</th>
+              <th>Supplier</th>
+              <th>Invoice ↔ PO Reference</th>
+              <th>Billed vs PO Total</th>
+              <th>Variance</th>
+              <th>Anomalies Detected</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="7" style="color:var(--muted); text-align:center">Loading procurement scans...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- In-Memory Spend Mandates -->
+    <section class="card">
+      <div class="section-title">
+        <h2>Server Agent Spend Mandates</h2>
+        <span class="chip chip-green">Active Guardrails</span>
+      </div>
+      <div class="table-wrap">
+        <table id="mandates-table">
+          <thead>
+            <tr>
+              <th>Mandate ID</th>
+              <th>Agent &amp; Purpose</th>
+              <th>Spent / Limit</th>
+              <th>Tx Cap</th>
+              <th>Review Above</th>
+              <th>Authorized Merchants</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="7" style="color:var(--muted); text-align:center">Loading server data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Live Authenticated Users Database -->
+    <section class="card">
+      <div class="section-title">
+        <h2>Authenticated Users Store (Live Backend Database)</h2>
+        <div style="display:flex; gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="loadServerData()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="users-table">
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Name / Identity</th>
+              <th>Email Address (Verified Syntax)</th>
+              <th>Workspace Role</th>
+              <th>Authentication Method</th>
+              <th>Account Status</th>
+              <th>Last Login</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="7" style="color:var(--muted); text-align:center; padding:16px">Loading user records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Policy Audit Trail -->
+    <section class="card">
+      <div class="section-title">
+        <h2>Immutable Policy Audit Trail</h2>
+        <button class="btn btn-secondary btn-sm" onclick="refreshAudit()">Refresh Log</button>
+      </div>
+      <div class="table-wrap">
+        <table id="audit-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>Decision</th>
+              <th>Reason &amp; Policy Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" style="color:var(--muted); text-align:center">No transactions logged yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const startTime = Date.now();
+    setInterval(() => {
+      const sec = Math.floor((Date.now() - startTime) / 1000);
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      document.getElementById('vital-uptime').textContent = `${m}m ${s < 10 ? '0' : ''}${s}s`;
+    }, 1000);
+
+    async function fetchApi(path, options = {}) {
+      const viewer = document.getElementById('json-viewer');
+      const statusEl = document.getElementById('response-status');
+      viewer.textContent = 'Executing ' + path + '...';
+      try {
+        const res = await fetch(path, options);
+        const data = await res.json();
+        statusEl.textContent = `Status: ${res.status} ${res.statusText}`;
+        statusEl.style.color = res.ok ? 'var(--green)' : 'var(--red)';
+        viewer.textContent = JSON.stringify(data, null, 2);
+        return data;
+      } catch (err) {
+        statusEl.textContent = 'Network Error';
+        statusEl.style.color = 'var(--red)';
+        viewer.textContent = '// Error: ' + err.message;
+      }
+    }
+
+    // ---------- Interactive Module Triggers ----------
+    async function triggerInventoryCheckout() {
+      const sku = document.getElementById('inv-checkout-sku').value;
+      await fetchApi('/api/inventory/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku, quantity: 5 })
+      });
+      loadServerData();
+    }
+
+    async function triggerEscrowStage1() {
+      const id = document.getElementById('escrow-test-id').value;
+      await fetchApi(`/api/escrow/${id}/evidence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidence: 'https://github.com/mandate/core/pull/142' })
+      });
+      loadServerData();
+    }
+
+    async function triggerEscrowStage2() {
+      const id = document.getElementById('escrow-test-id').value;
+      await fetchApi(`/api/escrow/${id}/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewer: 'Chief Security Architect', reviewNotes: '100% test vectors verified' })
+      });
+      loadServerData();
+    }
+
+    async function triggerEscrowStage3() {
+      const id = document.getElementById('escrow-test-id').value;
+      await fetchApi(`/api/escrow/${id}/checkout`, { method: 'POST' });
+      loadServerData();
+    }
+
+    async function triggerTriageAssess() {
+      const id = document.getElementById('triage-test-id').value;
+      await fetchApi(`/api/triage/${id}/assess`, { method: 'POST' });
+      loadServerData();
+    }
+
+    async function triggerTriageInvoice() {
+      const id = document.getElementById('triage-test-id').value;
+      await fetchApi(`/api/triage/${id}/invoice`, { method: 'POST' });
+      loadServerData();
+    }
+
+    async function triggerTriagePay() {
+      const id = document.getElementById('triage-test-id').value;
+      await fetchApi(`/api/triage/${id}/pay`, { method: 'POST' });
+      loadServerData();
+    }
+
+    async function triggerDisputeRebuttal() {
+      const transactionRef = document.getElementById('dispute-ref').value;
+      const trackingNumber = document.getElementById('dispute-tracking').value;
+      await fetchApi('/api/ai/draft-dispute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionRef, trackingNumber, carrier: 'UPS Ground' })
+      });
+      loadServerData();
+    }
+
+    async function triggerProcurementScan() {
+      await fetchApi('/api/procurement/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceRef: 'INV-2026-904',
+          poRef: 'PO-2026-904',
+          invoiceLine: 'High-Speed Fiber Transceivers',
+          poLine: 'High-Speed Fiber Transceivers',
+          invoiceQty: 12,
+          poQty: 10,
+          invoiceUnitPrice: 115,
+          poUnitPrice: 100,
+          invoiceTotal: 1380,
+          poTotal: 1000
+        })
+      });
+      loadServerData();
+    }
+
+    async function triggerFxConvert() {
+      const amount = Number(document.getElementById('fx-test-amount').value) || 1000;
+      const from = document.getElementById('fx-test-from').value;
+      const to = document.getElementById('fx-test-to').value;
+      await fetchApi('/api/fx/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, from, to })
+      });
+    }
+
+    async function triggerTestOrder() {
+      const merchant = document.getElementById('order-merchant').value || 'Test Merchant';
+      const amount = Number(document.getElementById('order-amount').value) || 100;
+      await fetchApi('/api/paypal/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency: 'USD',
+          merchant,
+          description: `Backend console test order for ${merchant}`
+        })
+      });
+      loadServerData();
+    }
+
+    async function triggerVaultUpdate() {
+      const amount = Number(document.getElementById('test-vault-input').value) || 50000;
+      await fetchApi('/api/vault', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+      loadServerData();
+    }
+
+    async function triggerAuthLoginTest() {
+      const email = document.getElementById('test-auth-email').value;
+      const password = document.getElementById('test-auth-pass').value;
+      await fetchApi('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: email.split('@')[0], role: 'Operator' })
+      });
+      loadServerData();
+    }
+
+    async function triggerOAuthTest() {
+      const provider = document.getElementById('test-oauth-provider').value;
+      await fetchApi('/api/auth/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider })
+      });
+      loadServerData();
+    }
+
+    async function resetState() {
+      await fetchApi('/api/reset', { method: 'POST' });
+      loadServerData();
+    }
+
+    // ---------- Real-Time Table Hydration ----------
+    async function loadServerData() {
+      try {
+        // Health
+        if (document.getElementById('vital-host')) {
+          document.getElementById('vital-host').textContent = window.location.host || 'Vercel Serverless';
+        }
+        const health = await fetch('/api/health').then(r => r.json());
+        if (health.paypalConnected) {
+          document.getElementById('vital-paypal').textContent = 'Sandbox Live';
+          document.getElementById('vital-paypal').style.color = 'var(--green)';
+          document.getElementById('vital-paypal-desc').textContent = 'PayPal credentials loaded';
+        }
+
+        // Mandates
+        const mandates = await fetch('/api/mandates').then(r => r.json());
+        const mandatesBody = document.querySelector('#mandates-table tbody');
+        if (mandatesBody) {
+          if (!mandates || !mandates.length) {
+            mandatesBody.innerHTML = '<tr><td colspan="7" style="color:var(--muted); text-align:center; padding:16px">No mandates configured.</td></tr>';
+          } else {
+            mandatesBody.innerHTML = mandates.map(m => `
+              <tr>
+                <td><code>${m.id}</code></td>
+                <td><strong>${m.name}</strong><br><small style="color:var(--muted)">${m.description}</small></td>
+                <td><strong>$${(m.spent || 0).toLocaleString()}</strong> / $${(m.limit || 0).toLocaleString()}</td>
+                <td>$${m.perTransaction}</td>
+                <td>${m.humanApprovalAbove ? '$' + m.humanApprovalAbove : 'None'}</td>
+                <td>${(m.merchants || []).map(item => `<span class="chip chip-green" style="margin:1px">${item}</span>`).join(' ')}</td>
+                <td><span class="chip ${m.status === 'active' ? 'chip-green' : 'chip-amber'}">${m.status}</span></td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // Vault Reserve
+        const vaultRes = await fetch('/api/vault').then(r => r.json()).catch(() => null);
+        if (vaultRes && vaultRes.formatted) {
+          const vEl = document.getElementById('vital-vault');
+          if (vEl) vEl.textContent = vaultRes.formatted;
+        }
+
+        // Users Store
+        const usersRes = await fetch('/api/auth/users').then(r => r.json()).catch(() => null);
+        if (usersRes && Array.isArray(usersRes.users)) {
+          const uEl = document.getElementById('vital-users');
+          if (uEl) uEl.textContent = `${usersRes.users.length} User${usersRes.users.length === 1 ? '' : 's'} Live`;
+          const usersBody = document.querySelector('#users-table tbody');
+          if (usersBody) {
+            usersBody.innerHTML = usersRes.users.map(u => `
+              <tr>
+                <td><code>${u.id}</code></td>
+                <td><strong>${u.name || u.email}</strong></td>
+                <td><strong style="color:var(--green)">${u.email}</strong></td>
+                <td><span class="chip chip-blue">${u.role || 'Operator'}</span></td>
+                <td><span class="chip ${u.authMethod?.includes('OAuth') ? 'chip-green' : 'chip-amber'}">${u.authMethod || 'Password'}</span></td>
+                <td><span class="chip chip-green">${u.status || 'active'}</span></td>
+                <td><small style="color:var(--muted)">${new Date(u.lastLoginAt || u.createdAt).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</small></td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // Inventory
+        const inv = await fetch('/api/inventory').then(r => r.json()).catch(() => null);
+        if (inv && Array.isArray(inv.items)) {
+          document.getElementById('vital-inventory').textContent = `${inv.items.length} SKUs Live`;
+          const invBody = document.querySelector('#inventory-table tbody');
+          if (invBody) {
+            invBody.innerHTML = inv.items.map(it => {
+              const isLow = Number(it.stock) <= Number(it.threshold);
+              return `
+                <tr>
+                  <td><code>${it.sku}</code></td>
+                  <td><strong>${it.item}</strong></td>
+                  <td><strong style="color:${isLow ? 'var(--red)' : 'var(--text)'}">${it.stock}</strong> / min ${it.threshold}</td>
+                  <td><span class="chip ${isLow ? 'chip-red' : 'chip-green'}">${it.status}</span></td>
+                  <td><small>${it.supplierA || 'Primary'}</small></td>
+                </tr>
+              `;
+            }).join('');
+          }
+        }
+
+        // Escrow
+        const esc = await fetch('/api/escrow').then(r => r.json()).catch(() => null);
+        if (esc && Array.isArray(esc.contracts)) {
+          const escBody = document.querySelector('#escrow-table tbody');
+          if (escBody) {
+            escBody.innerHTML = esc.contracts.map(c => `
+              <tr>
+                <td><code>${c.id}</code></td>
+                <td><strong>${c.bountyTitle}</strong><br><small style="color:var(--muted)">${c.developer}</small></td>
+                <td><strong>$${Number(c.amount).toLocaleString()}</strong></td>
+                <td><span class="chip ${c.stage >= 3 ? 'chip-green' : c.stage === 2 ? 'chip-amber' : 'chip-blue'}">Stage ${c.stage}: ${c.stageName || c.payoutStatus}</span></td>
+                <td><small>${c.verified ? '✓ Verified' : 'Pending Evidence'}${c.humanApproved ? ' · Signed off' : ''}</small></td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // Triage
+        const trg = await fetch('/api/triage').then(r => r.json()).catch(() => null);
+        if (trg && Array.isArray(trg.queue)) {
+          const trgBody = document.querySelector('#triage-table tbody');
+          if (trgBody) {
+            trgBody.innerHTML = trg.queue.map(t => `
+              <tr>
+                <td><strong>${t.patientName}</strong><br><small style="color:var(--muted)">${t.intakeRef}</small></td>
+                <td><span class="chip ${t.tier === 'Critical' ? 'chip-red' : t.tier === 'Urgent' ? 'chip-amber' : 'chip-green'}">${t.tier}</span></td>
+                <td><code>${t.vitals?.hr || 72} bpm · ${t.vitals?.bp || '120/80'} · ${t.vitals?.spo2 || 98}% · ${t.vitals?.temp || 98.6}°F</code></td>
+                <td>${t.billingTarget}: <strong>$${t.copay}</strong></td>
+                <td><span class="chip ${t.status === 'Copay Paid' ? 'chip-green' : t.status === 'Invoice Dispatched' ? 'chip-amber' : 'chip-blue'}">${t.status}</span></td>
+                <td><small>${t.paypalOrderId || t.invoiceId || 'Pending Rail'}</small></td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // Procurement Scans
+        const sc = await fetch('/api/procurement/scans').then(r => r.json()).catch(() => null);
+        if (Array.isArray(sc)) {
+          const scBody = document.querySelector('#procurement-table tbody');
+          if (scBody) {
+            scBody.innerHTML = sc.map(s => `
+              <tr>
+                <td><code>${s.id}</code></td>
+                <td><strong>${s.vendorName || 'Supplier'}</strong></td>
+                <td><code>${s.invoiceRef}</code> ↔ <code>${s.poRef}</code></td>
+                <td>$${s.invoiceTotal} vs $${s.poTotal}</td>
+                <td>${s.variance !== 0 ? `<strong style="color:var(--red)">+$${s.variance}</strong>` : '<span style="color:var(--green)">$0.00</span>'}</td>
+                <td><small style="color:${s.hasAnomalies ? 'var(--red)' : 'var(--green)'}">${(s.anomaliesInvoice?.length || 0) + (s.anomaliesPO?.length || 0)} anomalies flagged</small></td>
+                <td><span class="chip ${s.hasAnomalies ? 'chip-red' : 'chip-green'}">${s.hasAnomalies ? 'Blocked' : 'Verified Match'}</span></td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        // Audit Log
+        refreshAudit();
+      } catch (err) {
+        console.warn('Failed to load server data:', err);
+      }
+    }
+
+    async function refreshAudit() {
+      try {
+        const audit = await fetch('/api/audit').then(r => r.json());
+        const tbody = document.querySelector('#audit-table tbody');
+        if (!audit.entries || !audit.entries.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted); text-align:center">No transactions logged yet. Run a payment or test order above.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = audit.entries.map(e => `
+          <tr>
+            <td style="color:var(--muted); font-size:11px">${new Date(e.timestamp).toLocaleTimeString()}</td>
+            <td><code>${e.action}</code></td>
+            <td><span class="chip ${e.decision === 'approved' ? 'chip-green' : e.decision === 'blocked' ? 'chip-red' : 'chip-amber'}">${e.decision}</span></td>
+            <td>${e.reason}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.warn('Failed to refresh audit:', err);
+      }
+    }
+
+    // Initial load
+    loadServerData();
+    fetchApi('/api/health');
+
+    // Real-Time Server-Sent Events (SSE) live stream
+    try {
+      const sse = new EventSource('/api/events');
+      sse.onopen = () => {
+        const badge = document.getElementById('live-badge');
+        if (badge) {
+          badge.innerHTML = '<span class="status-dot"></span>REAL-TIME SSE LIVE';
+          badge.style.background = 'rgba(16, 185, 129, 0.2)';
+        }
+      };
+      const refreshEvents = [
+        'mandate_created',
+        'mandate_updated',
+        'mandate_deleted',
+        'approval_created',
+        'approval_updated',
+        'order_created',
+        'order_captured',
+        'audit_entry',
+        'invoice_created',
+        'inventory_updated',
+        'escrow_updated',
+        'triage_created',
+        'triage_updated',
+        'triage_deleted',
+        'procurement_scanned',
+        'reset'
+      ];
+      refreshEvents.forEach((evt) => {
+        sse.addEventListener(evt, () => {
+          loadServerData();
+        });
+      });
+
+      // Live sensor tick update
+      sse.addEventListener('vitals_tick', (e) => {
+        try {
+          const v = JSON.parse(e.data);
+          const vEl = document.getElementById('vital-vitals-desc');
+          if (vEl) vEl.textContent = `${v.hr} bpm · ${v.spo2}% SpO2 · ${v.bp}`;
+        } catch (_) {}
+      });
+    } catch (e) {
+      console.warn('SSE connection failed in developer console:', e);
+    }
+  </script>
+</body>
+</html>

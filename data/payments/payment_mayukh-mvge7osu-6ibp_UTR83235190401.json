@@ -1,0 +1,28 @@
+{
+  "paymentId": "mayukh-mvge7osu-6ibp",
+  "orderId": "ORD-INV-194699",
+  "utr": "UTR83235190401",
+  "amount": 5663,
+  "currency": "INR",
+  "status": "SUCCESS",
+  "method": "UPI",
+  "senderVpa": "9999999999@okhdfcbank",
+  "bankName": "HDFC Bank",
+  "merchantName": "MAYUKHUPI Showcase Store",
+  "projectSummary": "Payment for ORD-INV-194699",
+  "payer": {
+    "name": "Mayukh",
+    "mobile": "9999999999",
+    "email": "ixb21.mayukhbhattacharjee@gmail.com",
+    "isPhoneVerified": true
+  },
+  "timestamps": {
+    "initiated": "2026-10-20T07:59:54.703Z",
+    "completed": "2026-10-20T08:00:35.190Z"
+  },
+  "verification": {
+    "channel": "WHATSAPP_OTP_EMAIL",
+    "guardrailScore": 100,
+    "cryptographicHash": "SHA256-mvge8k1r-havoojz0"
+  }
+}

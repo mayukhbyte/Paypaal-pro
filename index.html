@@ -1,0 +1,226 @@
+<!doctype html>
+<!-- @src-type: component -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf8ff">
+  <meta name="description" content="Production console for scoped autonomous agent finance mandates, real-time policy guardrails, payment approvals, FairShare expense settlements, and PayPal processing.">
+  <title>Mandate | Autonomous Agent Finance Console</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/data.js" defer></script>
+  <script src="/api-client.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/interactions.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to workspace</a>
+  <header class="topbar">
+    <button class="mobile-menu-button icon-button" id="mobile-menu-button" type="button" aria-label="Open navigation" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <button class="sidebar-toggle-btn icon-button" id="sidebar-toggle-btn" type="button" aria-label="Toggle side menu" title="Hide/Show side menu">
+      <span class="toggle-arrow" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </span>
+    </button>
+    <a class="brand" href="#overview" data-route="overview" aria-label="Mandate overview">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3.5 34 9v9.8c0 9-5.8 14.6-14 17.7C11.8 33.4 6 27.8 6 18.8V9L20 3.5Z"/><path d="m13.7 20.1 4.2 4.2 8.7-9"/></svg></span>
+      <span class="brand-copy"><strong>Mandate</strong><small>Agent finance console</small></span>
+    </a>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm topbar-new-mandate-btn" id="topbar-new-mandate-btn" data-action="open-mandate" type="button" title="Create a new spend mandate in real time">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>+ Add Mandate</span>
+      </button>
+      <button class="custom-domain-chip" id="topbar-domain-btn" type="button" title="Configure custom domain and DNS settings" data-action="open-domain-settings">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span id="topbar-domain-label">console.mandate.finance</span>
+        <span class="domain-ssl-badge">SSL ACTIVE</span>
+      </button>
+      <a href="/backend" class="btn btn-secondary btn-sm" style="font-size:11px; font-weight:700; text-decoration:none" title="Open Backend & API Developer Console">&gt;_ Backend API</a>
+      <a href="/checkout/demo-session-101?signin=1" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px; font-weight:700; text-decoration:none; color:#0b63e5;" title="Open MAYUKHUPI Payment Gateway (Sign In with WhatsApp OTP, Email & Name)">⚡ MAYUKHUPI</a>
+      <span class="sandbox-badge" id="server-status-badge"><span class="status-dot"></span>SANDBOX READY</span>
+      <button class="sandbox-badge" id="paypal-status-badge" data-action="open-paypal-connect" type="button" title="PayPal Real-Time Rail Connected · Click to Configure" style="cursor:pointer; border:1px solid #00308730; color:#003087">
+        <span class="status-dot" style="background:#003087; box-shadow:0 0 0 3px #00308740; animation: pulse 2s infinite"></span>PayPal ✓ Connected
+      </button>
+      <div class="theme-switcher-group" id="topbar-theme-switcher" role="group" aria-label="Theme selector">
+        <button type="button" class="theme-btn active" data-theme-choice="light" title="Light mode" aria-label="Light mode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button type="button" class="theme-btn" data-theme-choice="dark" title="Dark mode" aria-label="Dark mode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button type="button" class="theme-btn" data-theme-choice="forest" title="Forest mode" aria-label="Forest mode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 17h18L12 2z"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+        </button>
+      </div>
+      <div class="vault-chip" id="topbar-vault-chip" data-action="open-vault-dialog" style="cursor:pointer" title="Autonomous Vault Reserve · Click to view or adjust default vault">
+        <span>Vault</span><strong id="header-vault-amount">₹0.00</strong>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="topbar-oauth-btn" data-action="open-auth-dialog" type="button" title="Sign in with OAuth or Email credentials" style="font-size:11px; font-weight:700">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span id="topbar-auth-label">OAuth / Sign In</span>
+      </button>
+      <button class="avatar-button" id="topbar-avatar-btn" data-action="open-auth-dialog" type="button" aria-label="Account &amp; OAuth profile" title="Sign In &amp; Set Vault Capital">IN</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+      <div class="workspace-switcher">
+        <span class="workspace-glyph">N</span>
+        <span><strong>Northstar Studio</strong><small>Sandbox workspace</small></span>
+        <button class="sidebar-arrow-btn" id="sidebar-arrow-btn" type="button" aria-label="Hide side menu" title="Hide side menu">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+      </div>
+      <div class="nav-label">CONTROL ROOM</div>
+      <nav class="side-nav" id="side-nav">
+        <button class="nav-link" data-route="overview" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span>Command center</span>
+        </button>
+        <div class="nav-link-row">
+          <button class="nav-link" data-route="mandates" type="button">
+            <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/></svg></span>
+            <span>Spend mandates</span><span class="nav-count">0</span>
+          </button>
+          <button class="sidebar-add-mandate-btn" data-action="open-mandate" type="button" title="Create new spend mandate" aria-label="Create new spend mandate">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <button class="nav-link" data-route="approvals" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span>Approvals queue</span><span class="nav-count attention" style="display:none">0</span>
+        </button>
+        <button class="nav-link" data-route="fairshare" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+          <span>FairShare</span>
+        </button>
+        <button class="nav-link" data-route="bots" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+          <span>Bot Payments</span><span class="nav-count" id="bot-status-pill" style="background:#10b981; color:#fff; font-size:10px; font-weight:700">LIVE</span>
+        </button>
+        <a href="/checkout/demo-session-101?signin=1" target="_blank" class="nav-link" style="text-decoration:none;" title="Open MayukhUPI Payment Gateway (Sign In with WhatsApp OTP, Email & Name)">
+          <span class="nav-icon" style="color:#0b63e5;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+          <span>MayukhUPI PG Gateway</span><span class="nav-count" style="background:#0b63e5; color:#fff; font-size:9px; font-weight:700">UPI+PP</span>
+        </a>
+      </nav>
+      <div class="nav-label nav-label-spaced">AGENT WORKFLOWS</div>
+      <nav class="side-nav" id="workflow-nav">
+        <button class="nav-link" data-route="disputes" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+          <span>Dispute resolver</span>
+        </button>
+        <button class="nav-link" data-route="procurement" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+          <span>Procurement</span>
+        </button>
+        <button class="nav-link" data-route="cfo" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-5 0c0 2 5 2 5 4a3.5 3.5 0 0 1-5 0"/></svg></span>
+          <span>Freelancer CFO</span>
+        </button>
+      </nav>
+      <div class="nav-label nav-label-spaced">DOMAIN MODULES</div>
+      <nav class="side-nav" id="notes-nav">
+        <button class="nav-link" data-route="inventory" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          <span>Inventory agent</span>
+        </button>
+        <button class="nav-link" data-route="triage" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+          <span>Clinical triage &amp; billing</span>
+        </button>
+        <button class="nav-link" data-route="escrow" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><polyline points="12 12 12 17 15 15"/></svg></span>
+          <span>Developer escrow</span>
+        </button>
+      </nav>
+      <div class="nav-label nav-label-spaced">COMPLIANCE &amp; LEGAL</div>
+      <nav class="side-nav" id="legal-nav">
+        <button class="nav-link" data-route="privacy" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <span>Privacy policy</span>
+        </button>
+        <button class="nav-link" data-route="terms" type="button">
+          <span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+          <span>Terms &amp; conditions</span>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="appearance-control">
+          <span class="appearance-label">THEME</span>
+          <div class="theme-segmented" role="group" aria-label="Theme switcher">
+            <button type="button" class="theme-segment active" data-theme-choice="light">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="21" y2="12"/></svg> Light
+            </button>
+            <button type="button" class="theme-segment" data-theme-choice="dark">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Dark
+            </button>
+            <button type="button" class="theme-segment" data-theme-choice="forest">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 17h18L12 2z"/></svg> Forest
+            </button>
+          </div>
+        </div>
+        <div class="guardrail-mini">
+          <span class="guardrail-mini-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <div><strong>Guardrails active</strong><small>Policy layer · PayPal sandbox</small></div>
+          <span class="mini-pulse"></span>
+        </div>
+        <button class="reset-button" id="reset-demo" type="button" title="Clear all mandates and payments to a clean slate">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span>Clear all data</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="workspace" id="workspace" tabindex="-1">
+      <div id="app" aria-live="polite"></div>
+      <footer class="app-footer">
+        <span>Mandate Financial Operating System · PayPal Sandbox Integration</span>
+        <div class="footer-links">
+          <button class="footer-link-btn" data-route="privacy" type="button">Privacy Policy</button>
+          <span class="footer-sep">·</span>
+          <button class="footer-link-btn" data-route="terms" type="button">Terms &amp; Conditions</button>
+          <span class="footer-sep">·</span>
+          <button class="footer-link-btn" data-action="open-domain-settings" type="button">Custom Domain</button>
+        </div>
+        <span class="footer-copy-sub">Enterprise policy boundaries and automated execution governance. All rights reserved.</span>
+      </footer>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button data-route="overview" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <small>Home</small>
+    </button>
+    <button data-route="mandates" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/></svg>
+      <small>Mandates</small>
+    </button>
+    <button data-route="approvals" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <small>Approvals</small>
+    </button>
+    <button data-route="fairshare" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <small>FairShare</small>
+    </button>
+    <button id="mobile-more" type="button" aria-expanded="false">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      <small>More</small>
+    </button>
+  </nav>
+  <div class="mobile-more-panel" id="mobile-more-panel" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div id="modal-root"></div>
+</body>
+</html>

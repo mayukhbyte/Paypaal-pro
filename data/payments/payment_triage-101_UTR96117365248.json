@@ -1,0 +1,28 @@
+{
+  "paymentId": "triage-101",
+  "orderId": "ORD-MVGLRBVT",
+  "utr": "UTR96117365248",
+  "amount": 6375,
+  "currency": "INR",
+  "status": "SUCCESS",
+  "method": "UPI",
+  "senderVpa": "9876543210@okaxis",
+  "bankName": "HDFC Bank",
+  "merchantName": "Medical Triage Clinic",
+  "projectSummary": "Clinical Triage Copay",
+  "payer": {
+    "name": "Jessica Miller",
+    "mobile": "9876543210",
+    "email": "user@mayukhupi.com",
+    "isPhoneVerified": true
+  },
+  "timestamps": {
+    "initiated": "2026-10-20T11:31:08.393Z",
+    "completed": "2026-10-20T11:35:17.366Z"
+  },
+  "verification": {
+    "channel": "WHATSAPP_OTP_EMAIL",
+    "guardrailScore": 100,
+    "cryptographicHash": "SHA256-mvglwo05-23xcr30u"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "paymentId": "demo-session-101",
+  "orderId": "ORD-on-101",
+  "utr": "UTR83050359761",
+  "amount": 500,
+  "currency": "INR",
+  "status": "SUCCESS",
+  "method": "UPI",
+  "senderVpa": "mayukh@okhdfcbank",
+  "bankName": "HDFC Bank",
+  "merchantName": "MAYUKHUPI Showcase Store",
+  "projectSummary": "Payment for ORD-on-101",
+  "payer": {
+    "name": "Mayukh Moyukh",
+    "mobile": "9007446757",
+    "email": "mayukh@example.com",
+    "isPhoneVerified": true
+  },
+  "timestamps": {
+    "initiated": "2026-10-17T17:20:09.457Z",
+    "completed": "2026-10-20T07:57:30.359Z"
+  },
+  "verification": {
+    "channel": "WHATSAPP_OTP_EMAIL",
+    "guardrailScore": 100,
+    "cryptographicHash": "SHA256-mvge4lfl-om9ycdnf"
+  }
+}

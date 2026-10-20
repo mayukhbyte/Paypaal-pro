@@ -1,0 +1,28 @@
+{
+  "paymentId": "mdt-mvgfepwq-j6lh",
+  "orderId": "ORD-Q-J6LH",
+  "utr": "UTR85211111701",
+  "amount": 15000,
+  "currency": "INR",
+  "status": "SUCCESS",
+  "method": "UPI",
+  "senderVpa": "meyon@okaxis",
+  "bankName": "HDFC Bank",
+  "merchantName": "runpod.io",
+  "projectSummary": "Spend Mandate: Enterprise AI Compute Cluster",
+  "payer": {
+    "name": "Meyon Moyukh",
+    "mobile": "9007446757",
+    "email": "meyon@example.com",
+    "isPhoneVerified": true
+  },
+  "timestamps": {
+    "initiated": "2026-10-20T08:33:22.346Z",
+    "completed": "2026-10-20T08:33:31.111Z"
+  },
+  "verification": {
+    "channel": "WHATSAPP_OTP_EMAIL",
+    "guardrailScore": 100,
+    "cryptographicHash": "SHA256-mvgfewod-p9vg1bno"
+  }
+}

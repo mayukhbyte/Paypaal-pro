@@ -1,0 +1,28 @@
+{
+  "paymentId": "mdt-ai",
+  "orderId": "ORD-MVGIVFRL",
+  "utr": "UTR91033906671",
+  "amount": 8000,
+  "currency": "INR",
+  "status": "SUCCESS",
+  "method": "UPI",
+  "senderVpa": "9999999999@okhdfcbank",
+  "bankName": "HDFC Bank",
+  "merchantName": "MAYUKHUPI Showcase Store",
+  "projectSummary": "Payment for ORD-MVGIVFRL",
+  "payer": {
+    "name": "Mayon Bhattacharjee",
+    "mobile": "9999999999",
+    "email": "mayonbhattacharjee@gmail.com",
+    "isPhoneVerified": true
+  },
+  "timestamps": {
+    "initiated": "2026-10-20T10:10:21.203Z",
+    "completed": "2026-10-20T10:10:33.906Z"
+  },
+  "verification": {
+    "channel": "WHATSAPP_OTP_EMAIL",
+    "guardrailScore": 100,
+    "cryptographicHash": "SHA256-mvgivpky-rhodb5kh"
+  }
+}

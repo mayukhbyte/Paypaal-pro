@@ -43,7 +43,7 @@ function getSession(from) {
 }
 function clearSession(from) { sessions[from] = { step: null, data: {} }; }
 
-function money(n) { return `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+function money(n) { return `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 
 // ─── QR code ──────────────────────────────────────────────────────────────────
 client.on('qr', (qr) => {
@@ -74,6 +74,15 @@ client.on('message', async (msg) => {
   → Triggers a guarded PayPal payment
   → Example: !pay mandate-abc AWS 250
 
+💼 *Freelancer CFO*
+!cfo <prompt>
+  → Autonomous treasury, invoicing, FX parity & reminders
+  → Examples:
+    !cfo Invoice Acme Corp 2500 EUR
+    !cfo Convert 1500 USD to EUR
+    !cfo Draft payment reminder for late receivables
+    !cfo What is my tax reserve and runway?
+
 📊 *Info*
 !mandates   → List active mandates
 !vault      → Vault balance & committed spend
@@ -87,17 +96,21 @@ client.on('message', async (msg) => {
 !fairshare  → Interactive group expense split
 
 All payments are routed through the real Mandate guardrail → PayPal pipeline.`);
-# ── !cfo <prompt> ──────────────────────────────────────────────────────────
-  if (body.startsWith('!cfo ')) {
-    const prompt = body.substring(5).trim();
-    if (!prompt) return msg.reply('Please provide a prompt after !cfo
-Example: !cfo Invoice Acme Corp 2500 EUR');
+  }
+
+  // ── !cfo / !freelancer <prompt> ────────────────────────────────────────────
+  if (body.startsWith('!cfo') || body.startsWith('!freelancer')) {
+    const prompt = body.replace(/^!(?:cfo|freelancer)\s*/i, '').trim();
+    if (!prompt) {
+      return msg.reply(`💼 *Freelancer CFO Treasury Command*\n\nAsk me anything or provide an autonomous treasury directive:\n\n• *!cfo Invoice Acme Corp 2500 EUR* — Create PayPal formal invoice\n• *!cfo Convert 1500 USD to EUR* — Live Google parity currency exchange\n• *!cfo Draft payment reminder for late receivables* — Executive reminder\n• *!cfo What is my tax reserve and runway?* — Treasury overview`);
+    }
     await msg.reply(`⚙️ Processing with Freelancer CFO…`);
     try {
       const result = await core.cfoChat(prompt);
-      return msg.reply(result.response);
-    } catch (e) { return msg.reply(`❌ CFO error: ${e.message}`); }
-  }
+      return msg.reply(result.response || '✅ Operation completed by Freelancer CFO.');
+    } catch (e) {
+      return msg.reply(`❌ Freelancer CFO error: ${e.message}`);
+    }
   }
 
   // ── !mandates ──────────────────────────────────────────────────────────────
@@ -166,7 +179,7 @@ Example: !cfo Invoice Acme Corp 2500 EUR');
       const result = await core.executePayment({
         mandateId, merchant, amount, currency,
         description: `WhatsApp bot payment to ${merchant}`,
-        category: 'bot-initiated', source: 'WhatsApp'
+        category: 'bot-initiated', source: 'whatsapp_bot'
       });
       if (result.ok) {
         return msg.reply(`✅ *Payment Successful!*\n\nOrder ID:   ${result.orderId}\nCapture ID: ${result.captureId}\nAmount:     ${money(result.amount)} ${result.currency}\nLatency:    ${result.latency}\nChannel:    WhatsApp → Mandate → PayPal`);
@@ -238,7 +251,7 @@ Example: !cfo Invoice Acme Corp 2500 EUR');
       const result = await core.executePayment({
         mandateId, merchant, amount, currency: 'USD',
         description: `WhatsApp bot payment to ${merchant}`,
-        category: 'bot-initiated', source: 'WhatsApp'
+        category: 'bot-initiated', source: 'whatsapp_bot'
       });
       if (result.ok) {
         return msg.reply(`✅ *Payment Successful!*\n\nOrder: ${result.orderId}\nCapture: ${result.captureId}\nAmount: ${money(result.amount)} ${result.currency}\nLatency: ${result.latency}`);
