@@ -5856,6 +5856,7 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          _paymentCompleted = true; // Stop polling immediately — prevent success screen being wiped
           hideAllContent();
           const vSucc = document.getElementById('viewSuccessContent');
           if (vSucc) vSucc.hidden = false;
@@ -6128,6 +6129,7 @@
         const data = await res.json();
 
         hideAllContent();
+        _paymentCompleted = true; // Stop polling immediately
         const bar = document.getElementById('paymentMethodSelectorBar');
         if (bar) bar.style.display = 'none';
         const footer = document.getElementById('ypgStickyFooter');
@@ -6301,6 +6303,7 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          _paymentCompleted = true; // Stop 2s polling immediately
           // Directly render success — don't rely on loadState() which may read stale SQLite on Vercel
           hideAllContent();
           const bar = document.getElementById('paymentMethodSelectorBar');
@@ -6371,6 +6374,7 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          _paymentCompleted = true; // Stop 2s polling immediately
           // Directly render success — don't rely on loadState() which may read stale SQLite on Vercel
           hideAllContent();
           const bar = document.getElementById('paymentMethodSelectorBar');
@@ -6711,7 +6715,12 @@
       container.style.display = html ? 'flex' : 'none';
     }
 
+    // Global flag: set to true once any payment succeeds — stops polling from overwriting the success screen
+    let _paymentCompleted = false;
+
     function renderState(data) {
+      // Don't let the polling overwrite an already-shown success screen
+      if (_paymentCompleted) return;
       state = data;
       const b = data.branding || {};
       const appName = b.appName || 'MayukhUPI PG';
@@ -7869,9 +7878,12 @@
       }
     }
 
-    // Continuous 2-second fallback polling: guarantees instant response when cashier confirms/declines or queues clear
+    // Continuous fallback polling: guarantees instant response when cashier confirms/declines
+    // Stops automatically once payment is done to prevent overwriting the success screen
     setInterval(() => {
+      if (_paymentCompleted) return; // Payment done — do not poll anymore
       if (state && (state.status === 'SUCCESS' || state.status === 'FAILED' || state.status === 'EXPIRED' || state.status === 'BLOCKED' || state.isBanned)) {
+        _paymentCompleted = true; // Mark as done to stop future polls
         return;
       }
       loadState();

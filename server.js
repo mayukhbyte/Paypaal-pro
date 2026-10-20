@@ -62,10 +62,52 @@ try { qrcode = require('qrcode'); } catch { console.warn('⚠️  qrcode not ins
 let youpiDb = null;
 try {
   const { DatabaseSync } = require('node:sqlite');
-  const youpiDbPath = path.join(__dirname, 'YouPI-PG-main', 'data', 'youpi_pg.sqlite');
-  if (require('fs').existsSync(youpiDbPath)) {
+  const fs = require('fs');
+  const sourcePath = path.join(__dirname, 'YouPI-PG-main', 'data', 'youpi_pg.sqlite');
+
+  // On Vercel, /tmp is the only writable directory. Copy the SQLite DB there on startup.
+  const isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
+  let youpiDbPath = sourcePath;
+
+  if (isVercel) {
+    const tmpPath = '/tmp/youpi_pg.sqlite';
+    // Copy source DB to /tmp if not already there (fresh cold start)
+    if (!fs.existsSync(tmpPath) && fs.existsSync(sourcePath)) {
+      fs.copyFileSync(sourcePath, tmpPath);
+      console.log('📋 Copied SQLite DB to /tmp for Vercel writable access');
+    } else if (!fs.existsSync(tmpPath)) {
+      // Source doesn't exist either — create empty file so DatabaseSync doesn't fail
+      fs.writeFileSync(tmpPath, '');
+    }
+    youpiDbPath = tmpPath;
+  }
+
+  if (fs.existsSync(youpiDbPath)) {
     youpiDb = new DatabaseSync(youpiDbPath);
     console.log('📦 YouPI PG Database connected:', youpiDbPath);
+
+    // Ensure tables exist (needed if we started from an empty /tmp file)
+    youpiDb.exec(`
+      CREATE TABLE IF NOT EXISTS payment_sessions (
+        id TEXT PRIMARY KEY, order_id TEXT, amount_paise INTEGER DEFAULT 0,
+        currency TEXT DEFAULT 'INR', status TEXT DEFAULT 'ACTIVE',
+        method TEXT, merchant_name TEXT, project_summary TEXT,
+        metadata TEXT DEFAULT '{}', vpa TEXT,
+        created_at TEXT, updated_at TEXT, completed_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS payment_observations (
+        id TEXT PRIMARY KEY, receiving_account_id TEXT, source TEXT,
+        amount_paise INTEGER, observed_at TEXT, ingested_at TEXT,
+        sender_vpa TEXT, bank_reference_number TEXT, fingerprint_hash TEXT,
+        raw_payload TEXT, attribution_status TEXT, attributed_payment_id TEXT,
+        created_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY, name TEXT, email TEXT, mobile_number TEXT,
+        is_phone_verified INTEGER DEFAULT 0, status TEXT DEFAULT 'ACTIVE',
+        last_login_at TEXT, created_at TEXT, updated_at TEXT
+      );
+    `);
   }
 } catch (e) {
   console.warn('⚠️ Could not open YouPI SQLite db:', e.message);
