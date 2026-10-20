@@ -6213,11 +6213,51 @@
       try {
         const res = await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-cod`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer: activeCustomer })
         });
         const data = await res.json();
-        if (res.ok) {
-          loadState();
+        if (res.ok && data.success) {
+          // Directly render success — don't rely on loadState() which may read stale SQLite on Vercel
+          hideAllContent();
+          const bar = document.getElementById('paymentMethodSelectorBar');
+          if (bar) bar.style.display = 'none';
+          const footer = document.getElementById('ypgStickyFooter');
+          if (footer) footer.style.display = 'none';
+
+          const successView = document.getElementById('viewSuccessContent');
+          if (successView) successView.hidden = false;
+
+          const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : (state?.amount || '0.00');
+
+          const amtEl = document.getElementById('successAmountVal');
+          if (amtEl) amtEl.textContent = `₹${paidAmt}`;
+
+          const titleEl = document.getElementById('successTitleText');
+          if (titleEl) titleEl.textContent = 'Order Placed (Cash on Delivery)!';
+
+          const descEl = document.getElementById('successDescText');
+          if (descEl) descEl.innerHTML = `
+            <div style="font-size:15px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} — COD Order Confirmed</div>
+            <div style="font-size:13px; color:#475569; margin-bottom:10px; line-height:1.6;">
+              Your order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> has been placed.<br/>
+              Please keep <strong>₹${paidAmt}</strong> in cash ready for the courier agent upon arrival.<br/>
+              Reference ID: <code style="font-family:monospace; font-size:11px; color:#0b63e5;">${data.referenceId || '-'}</code>
+            </div>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 14px; font-size:12px; color:#92400e; margin-top:4px;">
+              📦 You will receive a call/message from our delivery agent before arrival.
+            </div>
+          `;
+
+          const codApiBox = document.getElementById('successCodDevApiBox');
+          const codApiUrl = document.getElementById('successCodDevApiUrl');
+          if (codApiBox && codApiUrl) {
+            codApiBox.style.display = 'block';
+            codApiUrl.textContent = `${API_BASE}/api/v1/orders/${data.orderId || PAYMENT_ID}/cod`;
+          }
+
+          showOptionToast(`✓ COD order placed! Ref: ${data.referenceId}`);
+          emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'COD', isCod: true });
         } else {
           alert(data.error || 'Failed to place COD order');
           if (btn) {
@@ -6243,11 +6283,43 @@
       try {
         const res = await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-cash`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer: activeCustomer })
         });
         const data = await res.json();
-        if (res.ok) {
-          loadState();
+        if (res.ok && data.success) {
+          // Directly render success — don't rely on loadState() which may read stale SQLite on Vercel
+          hideAllContent();
+          const bar = document.getElementById('paymentMethodSelectorBar');
+          if (bar) bar.style.display = 'none';
+          const footer = document.getElementById('ypgStickyFooter');
+          if (footer) footer.style.display = 'none';
+
+          const successView = document.getElementById('viewSuccessContent');
+          if (successView) successView.hidden = false;
+
+          const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : (state?.amount || '0.00');
+
+          const amtEl = document.getElementById('successAmountVal');
+          if (amtEl) amtEl.textContent = `₹${paidAmt}`;
+
+          const titleEl = document.getElementById('successTitleText');
+          if (titleEl) titleEl.textContent = 'Cash Payment Confirmed!';
+
+          const descEl = document.getElementById('successDescText');
+          if (descEl) descEl.innerHTML = `
+            <div style="font-size:15px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} — Cash Received at Till</div>
+            <div style="font-size:13px; color:#475569; margin-bottom:10px; line-height:1.6;">
+              Payment for Order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> confirmed at billing counter.<br/>
+              Reference: <code style="font-family:monospace; font-size:11px; color:#0b63e5;">${data.referenceId || '-'}</code>
+            </div>
+          `;
+
+          const codApiBox = document.getElementById('successCodDevApiBox');
+          if (codApiBox) codApiBox.style.display = 'none';
+
+          showOptionToast(`✓ Cash payment confirmed! Ref: ${data.referenceId}`);
+          emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'CASH_COUNTER', isCod: false });
         } else {
           alert(data.error || 'Failed to confirm cash payment');
           if (btn) {

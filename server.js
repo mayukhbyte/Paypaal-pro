@@ -124,6 +124,10 @@ function computeNeededVault(approvals) {
 // ─── In-Memory Receipt Store (Vercel-compatible: no filesystem writes needed) ─
 const _receiptStore = new Map(); // paymentId → receiptRecord
 
+// ─── In-Memory Session Status Store (Vercel-compatible: overrides SQLite when it can't persist) ─
+// Stores { status, method, referenceId, completedAt } per paymentId
+const _sessionStatusStore = new Map();
+
 let store = {
   // Vault state — dynamically recalculated when approvals are loaded
   vault: {
@@ -5372,13 +5376,20 @@ app.get('/api/v1/checkout/:id/state', (req, res) => {
   const merchantName = req.query.merchant || meta.merchantName || session.merchant_name || 'MAYUKHUPI Showcase Store';
   const projectSummary = req.query.description || req.query.title || meta.description || meta.projectName || meta.title || `Mandate Project Settlement · ${session.order_id}`;
 
+  // Override status/method from in-memory store (Vercel-safe fallback when SQLite can't persist)
+  const memOverride = _sessionStatusStore.get(req.params.id);
+  const finalStatus = (memOverride && memOverride.status) || session.status;
+  const finalMethod = (memOverride && memOverride.method) || session.method;
+
   res.json({
     paymentId: session.id,
     orderId: session.order_id,
     amount: (session.amount_paise / 100).toFixed(2),
     currency: session.currency || 'INR',
-    status: session.status,
-    method: session.method,
+    status: finalStatus,
+    method: finalMethod,
+    verificationTag: memOverride?.verificationTag || null,
+    referenceId: memOverride?.referenceId || null,
     merchantName: merchantName,
     projectSummary: projectSummary,
     title: projectSummary,
@@ -6293,32 +6304,104 @@ app.post('/api/v1/checkout/:id/expire', (req, res) => {
 // Checkout: confirm COD (Cash on Delivery)
 app.post('/api/v1/checkout/:id/confirm-cod', (req, res) => {
   const { id } = req.params;
-  const { details } = req.body || {};
+  const { details, customer } = req.body || {};
   const refId = `COD-MAYUKH-${Date.now().toString(36).toUpperCase()}`;
+  const nowIso = new Date().toISOString();
+
+  // 1. Write to in-memory status store (always works on Vercel)
+  _sessionStatusStore.set(id, {
+    status: 'SUCCESS',
+    method: 'COD',
+    referenceId: refId,
+    verificationTag: 'COD_ORDER_PLACED',
+    completedAt: nowIso
+  });
+
+  // 2. Try SQLite update (works locally, silent fail on Vercel)
   if (youpiDb) {
     try {
       youpiDb.prepare('UPDATE payment_sessions SET status = ?, method = ?, updated_at = ? WHERE id = ?')
-        .run('SUCCESS', 'COD', new Date().toISOString(), id);
+        .run('SUCCESS', 'COD', nowIso, id);
     } catch {}
   }
+
+  // 3. Get session for amount / order info
+  let amount = '0.00';
+  let orderId = `ORD-${id.slice(-6).toUpperCase()}`;
+  try {
+    const session = getOrCreateYoupiSession(id, {});
+    if (session) {
+      amount = (session.amount_paise / 100).toFixed(2);
+      orderId = session.order_id || orderId;
+    }
+  } catch {}
+
   logAudit('mayukhupi_cod_settled', { paymentId: id, refId, ...details }, 'approved', 'MAYUKHUPI Order placed via Cash on Delivery');
-  broadcast('settlement_stage', { stage: 'completed', paymentId: id, refId, rail: 'COD' });
-  res.json({ success: true, status: 'SUCCESS', method: 'COD', referenceId: refId, orderId: `ORD-${id.slice(-6)}` });
+  broadcast('settlement_stage', { stage: 'completed', paymentId: id, refId, rail: 'COD', method: 'COD' });
+  broadcast('upi_payment_confirmed', { paymentId: id, orderId, refId, amount, payer: customer?.name || 'Customer', method: 'COD', time: nowIso });
+
+  res.json({
+    success: true,
+    status: 'SUCCESS',
+    method: 'COD',
+    verificationTag: 'COD_ORDER_PLACED',
+    referenceId: refId,
+    orderId,
+    amount: Number(amount),
+    currency: 'INR',
+    paymentId: id
+  });
 });
 
 // Checkout: confirm Cash at Till
 app.post('/api/v1/checkout/:id/confirm-cash', (req, res) => {
   const { id } = req.params;
+  const { customer } = req.body || {};
   const refId = `CASH-TILL-${Date.now().toString(36).toUpperCase()}`;
+  const nowIso = new Date().toISOString();
+
+  // 1. Write to in-memory status store (always works on Vercel)
+  _sessionStatusStore.set(id, {
+    status: 'SUCCESS',
+    method: 'CASH_COUNTER',
+    referenceId: refId,
+    verificationTag: 'CASH_RECEIVED',
+    completedAt: nowIso
+  });
+
+  // 2. Try SQLite update
   if (youpiDb) {
     try {
       youpiDb.prepare('UPDATE payment_sessions SET status = ?, method = ?, updated_at = ? WHERE id = ?')
-        .run('SUCCESS', 'CASH_COUNTER', new Date().toISOString(), id);
+        .run('SUCCESS', 'CASH_COUNTER', nowIso, id);
     } catch {}
   }
+
+  // 3. Get session for amount
+  let amount = '0.00';
+  let orderId = `ORD-${id.slice(-6).toUpperCase()}`;
+  try {
+    const session = getOrCreateYoupiSession(id, {});
+    if (session) {
+      amount = (session.amount_paise / 100).toFixed(2);
+      orderId = session.order_id || orderId;
+    }
+  } catch {}
+
   logAudit('mayukhupi_cash_settled', { paymentId: id, refId }, 'approved', 'MAYUKHUPI Order settled via Cash at Counter');
-  broadcast('settlement_stage', { stage: 'completed', paymentId: id, refId, rail: 'CASH' });
-  res.json({ success: true, status: 'SUCCESS', method: 'CASH_COUNTER', referenceId: refId });
+  broadcast('settlement_stage', { stage: 'completed', paymentId: id, refId, rail: 'CASH', method: 'CASH_COUNTER' });
+
+  res.json({
+    success: true,
+    status: 'SUCCESS',
+    method: 'CASH_COUNTER',
+    verificationTag: 'CASH_RECEIVED',
+    referenceId: refId,
+    orderId,
+    amount: Number(amount),
+    currency: 'INR',
+    paymentId: id
+  });
 });
 
 // Checkout: trigger webhook hook (analytics ping)
