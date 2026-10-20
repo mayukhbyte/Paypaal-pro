@@ -5856,32 +5856,64 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          _paymentCompleted = true; // Stop polling immediately — prevent success screen being wiped
           hideAllContent();
           const vSucc = document.getElementById('viewSuccessContent');
           if (vSucc) vSucc.hidden = false;
           const sTitle = document.getElementById('successTitleText');
           if (sTitle) sTitle.textContent = 'UPI Payment Settled Successfully!';
           const sDesc = document.getElementById('successDescText');
+
+          // Safely format amount — server may return number or string
+          const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : Number(state?.amount || 0).toFixed(2);
+          const receiptPayId = data.paymentId || PAYMENT_ID;
+
+          // Build stateless receipt URL — works on Vercel (no server memory needed)
+          const rp = new URLSearchParams({
+            paymentId: receiptPayId,
+            amount: paidAmt,
+            utr: data.utr || '-',
+            method: 'UPI',
+            orderId: data.orderId || state?.orderId || '',
+            merchant: state?.merchantName || 'MAYUKHUPI Showcase Store',
+            payer: data.customer?.name || activeCustomer?.name || 'Customer',
+            mobile: '+91 ' + (data.customer?.mobile || activeCustomer?.mobile || ''),
+            email: data.customer?.email || activeCustomer?.email || '',
+            vpa: vpa || '',
+            bank: 'HDFC Bank (UPI)',
+            desc: state?.projectSummary || state?.title || '',
+            at: Date.now()
+          });
+          const receiptUrl = `/api/v1/receipt?${rp.toString()}`;
+
           if (sDesc) sDesc.innerHTML = `
-            <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${data.amount.toFixed(2)} Paid to ${state?.merchantName || 'Merchant'}</div>
-            <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Bank UTR: <strong>${data.utr}</strong></div>
+            <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} Paid to ${state?.merchantName || 'Merchant'}</div>
+            <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Bank UTR: <strong>${data.utr || '-'}</strong></div>
             <div style="font-size:12px; color:#475569; line-height:1.6;">
               Payer: <strong>${escapeHtml(data.customer?.name || activeCustomer?.name || 'Customer')}</strong><br/>
               WhatsApp: <strong>+91 ${data.customer?.mobile || activeCustomer?.mobile || ''}</strong> · Email: <strong>${data.customer?.email || activeCustomer?.email || ''}</strong><br/>
-              Recorded in SQLite Native Database &amp; Persisted to File Storage (${data.receiptJsonFile || 'receipt.json'})
+              Payment ID: <code style="font-family:monospace; font-size:11px;">${receiptPayId}</code>
             </div>
             <div style="margin-top:16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-              <a href="/api/v1/payments/${PAYMENT_ID}/receipt" target="_blank" class="btn btn-primary btn-sm" style="background:#0b63e5; color:#fff; text-decoration:none; padding:8px 16px; border-radius:8px; font-weight:700; font-size:12px;">
-                📄 View / Download Receipt File
+              <a href="${receiptUrl}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; background:#0b63e5; color:#fff; text-decoration:none; padding:10px 18px; border-radius:9px; font-weight:700; font-size:12px; box-shadow:0 4px 14px rgba(11,99,229,.30);">
+                📄 View &amp; Download Receipt
               </a>
-              <button type="button" onclick="openDatabaseFilesModal()" class="btn btn-secondary btn-sm" style="font-size:12px; padding:8px 16px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer;">
-                📁 View Database Records &amp; Files
+              <button type="button" onclick="openDatabaseFilesModal()" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:10px 16px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700; color:#334155;">
+                📁 All Payment Records
               </button>
             </div>
           `;
           showOptionToast(`✓ Payment confirmed! UTR: ${data.utr}`);
+          broadcastPaymentToMerchantOps({ paymentId: receiptPayId, orderId: data.orderId, amount: paidAmt, method: 'UPI', utr: data.utr, payer: activeCustomer?.name });
         } else {
-          showOptionToast(data.error || 'UPI Payment settlement failed.');
+          if (data.error === 'INSUFFICIENT_VAULT_BALANCE') {
+            // Show vault error prominently
+            const errMsg = `❌ Vault Insufficient!\n\nYou need ₹${Number(data.required).toFixed(2)} but only ₹${Number(data.available).toFixed(2)} is available in the vault.\n\nShortfall: ₹${Number(data.shortfall).toFixed(2)}\n\nPlease top up the vault from the admin console to process this payment.`;
+            alert(errMsg);
+            showOptionToast(`⚠️ Vault too low! Need ₹${Number(data.required).toFixed(2)}, have ₹${Number(data.available).toFixed(2)}`);
+          } else {
+            showOptionToast(data.error || data.message || 'UPI Payment settlement failed.');
+          }
         }
       } catch (err) {
         showOptionToast('Network error processing UPI payment: ' + err.message);
@@ -6097,19 +6129,86 @@
 
     async function confirmPaymentAsPaid(method, details) {
       try {
-        await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-paypal`, {
+        const res = await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-paypal`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method, details, deviceId: DeviceIdentity?.currentDeviceId })
+          headers: getApiHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ method, details, customer: activeCustomer, deviceId: DeviceIdentity?.currentDeviceId })
         });
-      } catch {}
-      hideAllContent();
-      const vSucc = document.getElementById('viewSuccessContent');
-      if (vSucc) vSucc.hidden = false;
-      const sTitle = document.getElementById('successTitleText');
-      if (sTitle) sTitle.textContent = 'Payment Completed with PayPal!';
-      const sDesc = document.getElementById('successDescText');
-      if (sDesc) sDesc.textContent = `Order ${state?.orderId || ''} settled via PayPal. Capture ID: ${details?.captureId || 'OK'}`;
+        const data = await res.json();
+
+        hideAllContent();
+        _paymentCompleted = true; // Stop polling immediately
+        const bar = document.getElementById('paymentMethodSelectorBar');
+        if (bar) bar.style.display = 'none';
+        const footer = document.getElementById('ypgStickyFooter');
+        if (footer) footer.style.display = 'none';
+
+        const vSucc = document.getElementById('viewSuccessContent');
+        if (vSucc) vSucc.hidden = false;
+
+        const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : Number(state?.amount || 0).toFixed(2);
+        const captureRef = data.captureId || details?.captureId || 'OK';
+        const receiptPayId = data.paymentId || PAYMENT_ID;
+
+        // Build stateless receipt URL
+        const rp2 = new URLSearchParams({
+          paymentId: receiptPayId,
+          amount: paidAmt,
+          captureId: captureRef,
+          utr: captureRef,
+          method: 'PAYPAL',
+          orderId: data.orderId || state?.orderId || '',
+          merchant: state?.merchantName || 'MAYUKHUPI Showcase Store',
+          payer: activeCustomer?.name || 'Customer',
+          mobile: activeCustomer?.mobile || '',
+          email: activeCustomer?.email || '',
+          bank: 'PayPal Rail',
+          desc: state?.projectSummary || state?.title || '',
+          at: Date.now()
+        });
+        const receiptUrl2 = `/api/v1/receipt?${rp2.toString()}`;
+
+        const amtEl = document.getElementById('successAmountVal');
+        if (amtEl) amtEl.textContent = `₹${paidAmt}`;
+
+        const sTitle = document.getElementById('successTitleText');
+        if (sTitle) sTitle.textContent = 'Payment Completed with PayPal!';
+
+        const sDesc = document.getElementById('successDescText');
+        if (sDesc) sDesc.innerHTML = `
+          <div style="font-size:16px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} Paid via PayPal</div>
+          <div style="font-family:monospace; background:#f1f5f9; padding:8px 14px; border-radius:8px; display:inline-block; margin-bottom:12px; font-size:13px;">Capture ID: <strong style="color:#0b63e5">${captureRef}</strong></div>
+          <div style="font-size:12px; color:#475569; line-height:1.6; margin-bottom:12px;">
+            Order: <strong>#${data.orderId || state?.orderId || PAYMENT_ID.slice(-6)}</strong><br/>
+            ${activeCustomer?.name ? `Payer: <strong>${escapeHtml(activeCustomer.name)}</strong><br/>` : ''}
+            ${activeCustomer?.email ? `Email: <strong>${escapeHtml(activeCustomer.email)}</strong>` : ''}
+          </div>
+          <div style="margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <a href="${receiptUrl2}" target="_blank" rel="noopener"
+               style="display:inline-flex; align-items:center; gap:6px; background:#0b63e5; color:#fff; text-decoration:none; padding:10px 18px; border-radius:9px; font-weight:700; font-size:12px; box-shadow:0 4px 14px rgba(11,99,229,.30);">
+              📄 View &amp; Download Receipt
+            </a>
+            <button type="button" onclick="openDatabaseFilesModal()"
+               style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:10px 16px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:700; color:#334155;">
+              📁 All Payment Records
+            </button>
+          </div>
+        `;
+
+        showOptionToast(`✓ PayPal payment confirmed! Capture: ${captureRef}`);
+        emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'PAYPAL', captureId: captureRef });
+        broadcastPaymentToMerchantOps({ paymentId: receiptPayId, orderId: data.orderId, amount: paidAmt, method: 'PAYPAL', captureId: captureRef, payer: activeCustomer?.name });
+      } catch (err) {
+        console.error('confirmPaymentAsPaid error:', err);
+        // Still try to show basic success if server call failed
+        hideAllContent();
+        const vSucc = document.getElementById('viewSuccessContent');
+        if (vSucc) vSucc.hidden = false;
+        const sTitle = document.getElementById('successTitleText');
+        if (sTitle) sTitle.textContent = 'Payment Completed with PayPal!';
+        const sDesc = document.getElementById('successDescText');
+        if (sDesc) sDesc.textContent = `Order ${state?.orderId || ''} settled via PayPal. Capture ID: ${details?.captureId || 'OK'}`;
+      }
     }
 
     async function selectPaymentMethod(method) {
@@ -6208,11 +6307,53 @@
       try {
         const res = await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-cod`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer: activeCustomer })
         });
         const data = await res.json();
-        if (res.ok) {
-          loadState();
+        if (res.ok && data.success) {
+          _paymentCompleted = true; // Stop 2s polling immediately
+          // Directly render success — don't rely on loadState() which may read stale SQLite on Vercel
+          hideAllContent();
+          const bar = document.getElementById('paymentMethodSelectorBar');
+          if (bar) bar.style.display = 'none';
+          const footer = document.getElementById('ypgStickyFooter');
+          if (footer) footer.style.display = 'none';
+
+          const successView = document.getElementById('viewSuccessContent');
+          if (successView) successView.hidden = false;
+
+          const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : (state?.amount || '0.00');
+
+          const amtEl = document.getElementById('successAmountVal');
+          if (amtEl) amtEl.textContent = `₹${paidAmt}`;
+
+          const titleEl = document.getElementById('successTitleText');
+          if (titleEl) titleEl.textContent = 'Order Placed (Cash on Delivery)!';
+
+          const descEl = document.getElementById('successDescText');
+          if (descEl) descEl.innerHTML = `
+            <div style="font-size:15px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} — COD Order Confirmed</div>
+            <div style="font-size:13px; color:#475569; margin-bottom:10px; line-height:1.6;">
+              Your order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> has been placed.<br/>
+              Please keep <strong>₹${paidAmt}</strong> in cash ready for the courier agent upon arrival.<br/>
+              Reference ID: <code style="font-family:monospace; font-size:11px; color:#0b63e5;">${data.referenceId || '-'}</code>
+            </div>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 14px; font-size:12px; color:#92400e; margin-top:4px;">
+              📦 You will receive a call/message from our delivery agent before arrival.
+            </div>
+          `;
+
+          const codApiBox = document.getElementById('successCodDevApiBox');
+          const codApiUrl = document.getElementById('successCodDevApiUrl');
+          if (codApiBox && codApiUrl) {
+            codApiBox.style.display = 'block';
+            codApiUrl.textContent = `${API_BASE}/api/v1/orders/${data.orderId || PAYMENT_ID}/cod`;
+          }
+
+          showOptionToast(`✓ COD order placed! Ref: ${data.referenceId}`);
+          emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'COD', isCod: true });
+          broadcastPaymentToMerchantOps({ paymentId: data.paymentId, orderId: data.orderId, amount: paidAmt, method: 'COD', referenceId: data.referenceId, payer: activeCustomer?.name });
         } else {
           alert(data.error || 'Failed to place COD order');
           if (btn) {
@@ -6238,11 +6379,45 @@
       try {
         const res = await fetch(`${API_BASE}/api/v1/checkout/${PAYMENT_ID}/confirm-cash`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer: activeCustomer })
         });
         const data = await res.json();
-        if (res.ok) {
-          loadState();
+        if (res.ok && data.success) {
+          _paymentCompleted = true; // Stop 2s polling immediately
+          // Directly render success — don't rely on loadState() which may read stale SQLite on Vercel
+          hideAllContent();
+          const bar = document.getElementById('paymentMethodSelectorBar');
+          if (bar) bar.style.display = 'none';
+          const footer = document.getElementById('ypgStickyFooter');
+          if (footer) footer.style.display = 'none';
+
+          const successView = document.getElementById('viewSuccessContent');
+          if (successView) successView.hidden = false;
+
+          const paidAmt = data.amount != null ? Number(data.amount).toFixed(2) : (state?.amount || '0.00');
+
+          const amtEl = document.getElementById('successAmountVal');
+          if (amtEl) amtEl.textContent = `₹${paidAmt}`;
+
+          const titleEl = document.getElementById('successTitleText');
+          if (titleEl) titleEl.textContent = 'Cash Payment Confirmed!';
+
+          const descEl = document.getElementById('successDescText');
+          if (descEl) descEl.innerHTML = `
+            <div style="font-size:15px; font-weight:800; color:#15803d; margin-bottom:8px;">₹${paidAmt} — Cash Received at Till</div>
+            <div style="font-size:13px; color:#475569; margin-bottom:10px; line-height:1.6;">
+              Payment for Order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> confirmed at billing counter.<br/>
+              Reference: <code style="font-family:monospace; font-size:11px; color:#0b63e5;">${data.referenceId || '-'}</code>
+            </div>
+          `;
+
+          const codApiBox = document.getElementById('successCodDevApiBox');
+          if (codApiBox) codApiBox.style.display = 'none';
+
+          showOptionToast(`✓ Cash payment confirmed! Ref: ${data.referenceId}`);
+          emitTriggerHook('PAYMENT_COMPLETED', { amount: paidAmt, method: 'CASH_COUNTER', isCod: false });
+          broadcastPaymentToMerchantOps({ paymentId: data.paymentId, orderId: data.orderId, amount: paidAmt, method: 'CASH_COUNTER', referenceId: data.referenceId, payer: activeCustomer?.name });
         } else {
           alert(data.error || 'Failed to confirm cash payment');
           if (btn) {
@@ -6459,6 +6634,10 @@
     }
 
     async function loadState() {
+      // CRITICAL: If payment is already done, NEVER call loadState again — it would wipe the success screen
+      if (_paymentCompleted) return;
+      // Also check sessionStorage as a backup (survives scope issues)
+      if (sessionStorage.getItem('_ypg_payment_done_' + PAYMENT_ID)) return;
       try {
         await DeviceIdentity.getOrRegister();
         const headers = getApiHeaders();
@@ -6551,7 +6730,45 @@
       container.style.display = html ? 'flex' : 'none';
     }
 
+    // Global flag: set to true once any payment succeeds — stops polling from overwriting the success screen
+    let _paymentCompleted = false;
+
+    // Broadcast payment to merchant-ops tab and localStorage (Vercel-compatible real-time)
+    function broadcastPaymentToMerchantOps(paymentData) {
+      try {
+        // 1. Mark session as done in sessionStorage (backup guard for loadState)
+        sessionStorage.setItem('_ypg_payment_done_' + PAYMENT_ID, '1');
+
+        // 2. Write to localStorage so merchant-ops page can read it
+        const existing = JSON.parse(localStorage.getItem('_ypg_confirmed_payments') || '[]');
+        const entry = {
+          id: paymentData.paymentId || PAYMENT_ID,
+          order_id: paymentData.orderId || state?.orderId || 'ORD-' + PAYMENT_ID.slice(-6).toUpperCase(),
+          amount_paise: Math.round(Number(paymentData.amount || state?.amount || 0) * 100),
+          status: 'SUCCESS',
+          method: paymentData.method || 'UPI',
+          metadata: JSON.stringify({ utr: paymentData.utr || paymentData.referenceId || paymentData.captureId || '-', payerName: paymentData.payer || activeCustomer?.name || 'Customer' }),
+          created_at: new Date().toISOString(),
+          completed_at: new Date().toISOString()
+        };
+        existing.unshift(entry);
+        if (existing.length > 50) existing.splice(50);
+        localStorage.setItem('_ypg_confirmed_payments', JSON.stringify(existing));
+
+        // 3. BroadcastChannel: instantly notify merchant-ops tab (same-origin)
+        try {
+          const ch = new BroadcastChannel('paypaal_payments');
+          ch.postMessage({ type: 'PAYMENT_CONFIRMED', payment: entry });
+          setTimeout(() => ch.close(), 500);
+        } catch {}
+      } catch (e) {
+        console.warn('broadcastPaymentToMerchantOps error:', e);
+      }
+    }
+
     function renderState(data) {
+      // Don't let the polling overwrite an already-shown success screen
+      if (_paymentCompleted) return;
       state = data;
       const b = data.branding || {};
       const appName = b.appName || 'MayukhUPI PG';
@@ -6927,6 +7144,8 @@
         }
 
         if (data.status === 'SUCCESS' || data.status === 'COMPLETED') {
+          _paymentCompleted = true; // Stop all polling immediately
+          sessionStorage.setItem('_ypg_payment_done_' + PAYMENT_ID, '1');
           closeProcessingModal();
           closeCancelPaymentModal();
           const bar = document.getElementById('paymentMethodSelectorBar');
@@ -6938,7 +7157,7 @@
           const footer = document.getElementById('ypgStickyFooter');
           if (footer) footer.style.display = 'none';
           const amtEl = document.getElementById('successAmountVal');
-          if (amtEl) amtEl.textContent = `₹${data.amount}`;
+          if (amtEl) amtEl.textContent = `₹${Number(data.amount).toFixed(2)}`;
 
           const isCodOrder = data.method === 'COD' || data.verificationTag === 'COD_ORDER_PLACED';
           const isCashCounter = data.method === 'CASH_COUNTER';
@@ -6947,24 +7166,57 @@
           const codApiBox = document.getElementById('successCodDevApiBox');
           const codApiUrl = document.getElementById('successCodDevApiUrl');
 
+          // Build stateless receipt URL
+          const rp = new URLSearchParams({
+            paymentId: data.paymentId || PAYMENT_ID,
+            amount: Number(data.amount).toFixed(2),
+            utr: data.referenceId || data.utr || data.verificationTag || '-',
+            method: data.method || 'UPI',
+            orderId: data.orderId || state?.orderId || '',
+            merchant: data.merchantName || state?.merchantName || 'MAYUKHUPI Showcase Store',
+            payer: activeCustomer?.name || 'Customer',
+            mobile: activeCustomer?.mobile || '',
+            email: activeCustomer?.email || '',
+            at: Date.now()
+          });
+          const receiptUrl = `/api/v1/receipt?${rp.toString()}`;
+
           if (isCodOrder) {
-            if (titleEl) titleEl.textContent = 'Order Placed (Cash on Delivery)!';
-            if (descEl) descEl.textContent = `Your order #${data.orderId || PAYMENT_ID.slice(-6)} was confirmed. Please keep ₹${data.amount} in cash ready for the courier agent upon arrival.`;
+            if (titleEl) titleEl.textContent = '✅ Order Placed (Cash on Delivery)!';
+            if (descEl) descEl.innerHTML = `
+              <div style="font-size:15px;font-weight:800;color:#15803d;margin-bottom:8px;">₹${Number(data.amount).toFixed(2)} — COD Order Confirmed</div>
+              <div style="font-size:13px;color:#475569;line-height:1.6;">Order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> placed successfully. Keep cash ready for the delivery agent.<br>
+              Ref: <code style="font-family:monospace;font-size:11px;color:#0b63e5;">${data.referenceId || '-'}</code></div>
+              <div style="margin-top:12px;"><a href="${receiptUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0b63e5;color:#fff;text-decoration:none;padding:9px 16px;border-radius:9px;font-weight:700;font-size:12px;">📄 View Receipt</a></div>
+            `;
             if (codApiBox && codApiUrl) {
               codApiBox.style.display = 'block';
               codApiUrl.textContent = `${API_BASE}/api/v1/orders/${data.orderId || PAYMENT_ID}/cod`;
             }
           } else if (isCashCounter) {
-            if (titleEl) titleEl.textContent = 'Cash Payment Confirmed!';
-            if (descEl) descEl.textContent = `Payment of ₹${data.amount} for Order #${data.orderId || PAYMENT_ID.slice(-6)} has been received and confirmed at the billing till.`;
+            if (titleEl) titleEl.textContent = '✅ Cash Payment Confirmed!';
+            if (descEl) descEl.innerHTML = `
+              <div style="font-size:15px;font-weight:800;color:#15803d;margin-bottom:8px;">₹${Number(data.amount).toFixed(2)} — Cash Received at Till</div>
+              <div style="font-size:13px;color:#475569;line-height:1.6;">Order <strong>#${data.orderId || PAYMENT_ID.slice(-6)}</strong> confirmed at billing counter.<br>
+              Ref: <code style="font-family:monospace;font-size:11px;color:#0b63e5;">${data.referenceId || '-'}</code></div>
+              <div style="margin-top:12px;"><a href="${receiptUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0b63e5;color:#fff;text-decoration:none;padding:9px 16px;border-radius:9px;font-weight:700;font-size:12px;">📄 View Receipt</a></div>
+            `;
             if (codApiBox) codApiBox.style.display = 'none';
           } else {
-            if (titleEl) titleEl.textContent = 'Payment Successful!';
-            if (descEl) descEl.textContent = 'Your payment was automatically verified by MAYUKHUPI PG banking observers.';
+            if (titleEl) titleEl.textContent = '✅ Payment Verified & Settled!';
+            if (descEl) descEl.innerHTML = `
+              <div style="font-size:15px;font-weight:800;color:#15803d;margin-bottom:8px;">₹${Number(data.amount).toFixed(2)} — UPI Payment Settled</div>
+              <div style="font-size:13px;color:#475569;line-height:1.6;">Verified by MAYUKHUPI PG banking observers.<br>
+              Ref: <code style="font-family:monospace;font-size:11px;color:#0b63e5;">${data.referenceId || data.utr || '-'}</code></div>
+              <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="${receiptUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#0b63e5;color:#fff;text-decoration:none;padding:9px 16px;border-radius:9px;font-weight:700;font-size:12px;">📄 View & Download Receipt</a>
+              </div>
+            `;
             if (codApiBox) codApiBox.style.display = 'none';
           }
 
           emitTriggerHook('PAYMENT_COMPLETED', { amount: data.amount, method: data.method, isCod: isCodOrder });
+          broadcastPaymentToMerchantOps({ paymentId: data.paymentId || PAYMENT_ID, orderId: data.orderId, amount: data.amount, method: data.method || 'UPI', utr: data.referenceId || data.utr, payer: activeCustomer?.name });
 
           try {
             window.parent.postMessage({
@@ -6978,7 +7230,7 @@
             btnReturn.hidden = false;
             btnReturn.href = data.returnUrl;
             if (window.parent === window) {
-              setTimeout(() => { window.location.href = data.returnUrl; }, 2000);
+              setTimeout(() => { window.location.href = data.returnUrl; }, 3000);
             }
           } else if (btnReturn) {
             btnReturn.hidden = true;
@@ -7709,9 +7961,12 @@
       }
     }
 
-    // Continuous 2-second fallback polling: guarantees instant response when cashier confirms/declines or queues clear
+    // Continuous fallback polling: guarantees instant response when cashier confirms/declines
+    // Stops automatically once payment is done to prevent overwriting the success screen
     setInterval(() => {
+      if (_paymentCompleted) return; // Payment done — do not poll anymore
       if (state && (state.status === 'SUCCESS' || state.status === 'FAILED' || state.status === 'EXPIRED' || state.status === 'BLOCKED' || state.isBanned)) {
+        _paymentCompleted = true; // Mark as done to stop future polls
         return;
       }
       loadState();

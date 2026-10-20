@@ -72,6 +72,27 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #0b63e5 rgba(11, 99, 229, 0.08);
+      padding-bottom: 3px;
+    }
+    .header-badges::-webkit-scrollbar {
+      height: 4px;
+    }
+    .header-badges::-webkit-scrollbar-track {
+      background: rgba(11, 99, 229, 0.06);
+      border-radius: 999px;
+    }
+    .header-badges::-webkit-scrollbar-thumb {
+      background: #0b63e5;
+      border-radius: 999px;
+    }
+    .header-badges > * {
+      flex-shrink: 0;
     }
     .status-pill {
       display: inline-flex;
@@ -334,10 +355,11 @@
             <th>Status</th>
             <th>UTR Ref</th>
             <th>Created / Settled At</th>
+            <th>Receipt</th>
           </tr>
         </thead>
         <tbody id="txTableBody">
-          <tr><td colspan="7" style="text-align:center; padding:30px; color:#94a3b8">Loading real-time transactions from SQLite...</td></tr>
+          <tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8">Loading real-time transactions from SQLite...</td></tr>
         </tbody>
       </table>
     </div>
@@ -418,8 +440,13 @@
                   <td><strong>₹${(s.amount_paise / 100).toFixed(2)}</strong></td>
                   <td><span style="font-weight:600">${s.method}</span></td>
                   <td><span class="${isSuccess ? 'badge-success' : 'badge-queued'}">${s.status}</span></td>
-                  <td><code style="font-family:'Fira Code', monospace">${meta.utr || '-'}</code></td>
+                  <td><code style="font-family:'Fira Code', monospace">${meta.utr || meta.refId || '-'}</code></td>
                   <td style="color:#64748b; font-size:11px">${new Date(s.completed_at || s.created_at).toLocaleString()}</td>
+                  <td>
+                    <a href="/api/v1/payments/${s.id}/receipt" target="_blank" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:#0b63e5; text-decoration:none; background:#eff6ff; padding:3px 8px; border-radius:6px; border:1px solid #bfdbfe;">
+                      📄 View Receipt
+                    </a>
+                  </td>
                 </tr>
               `;
             }).join('');
@@ -448,16 +475,159 @@
       }
     }
 
+    // ─── Real-Time: BroadcastChannel (cross-tab, Vercel-compatible) ──────────
+    // Listens for payments confirmed in the checkout tab and updates the UI instantly
+    try {
+      const paymentChannel = new BroadcastChannel('paypaal_payments');
+      paymentChannel.onmessage = (event) => {
+        if (event.data && event.data.type === 'PAYMENT_CONFIRMED') {
+          // Flash the live indicator
+          const live = document.getElementById('liveIndicator');
+          if (live) {
+            live.style.background = '#22c55e';
+            live.style.boxShadow = '0 0 10px #22c55e';
+            setTimeout(() => {
+              live.style.background = '';
+              live.style.boxShadow = '';
+            }, 1500);
+          }
+          // Immediately refresh the display
+          fetchLiveTelemetry();
+        }
+      };
+    } catch (e) {
+      console.warn('BroadcastChannel not supported:', e);
+    }
+
+    // ─── Merge localStorage payments into server data ─────────────────────────
+    function getLocalStoragePayments() {
+      try {
+        return JSON.parse(localStorage.getItem('_ypg_confirmed_payments') || '[]');
+      } catch { return []; }
+    }
+
+    // Override fetchLiveTelemetry to merge localStorage payments with server data
+    const _origFetchLiveTelemetry = fetchLiveTelemetry;
+    async function fetchLiveTelemetryWithLocal() {
+      try {
+        const res = await fetch('/api/v1/merchant/operations');
+        let data = {};
+        if (res.ok) data = await res.json();
+
+        // Merge localStorage payments (confirmed in this browser session)
+        const localPayments = getLocalStoragePayments();
+        const serverSessions = data.recentSessions || [];
+
+        // Deduplicate by id, local payments take precedence (they have SUCCESS status)
+        const merged = [...localPayments];
+        for (const s of serverSessions) {
+          if (!merged.find(m => m.id === s.id)) merged.push(s);
+        }
+        merged.sort((a, b) => new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at));
+        data.recentSessions = merged.slice(0, 30);
+
+        // Recalculate metrics from merged data
+        if (!data.metrics) data.metrics = {};
+        const successSessions = merged.filter(s => s.status === 'SUCCESS' || s.status === 'COMPLETED');
+        data.metrics.successfulPaymentsCount = successSessions.length;
+        data.metrics.todayVolumeInr = successSessions.reduce((sum, s) => sum + (s.amount_paise / 100), 0);
+        data.metrics.inWaitingQueueCount = data.metrics.inWaitingQueueCount || 0;
+        data.metrics.dualVerifiedCount = data.metrics.dualVerifiedCount || successSessions.length;
+
+        // Update KPIs
+        if (data.metrics) {
+          document.getElementById('kpiVol').textContent = `₹${Number(data.metrics.todayVolumeInr).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+          document.getElementById('kpiSuccess').textContent = data.metrics.successfulPaymentsCount;
+          document.getElementById('kpiQueue').textContent = data.metrics.inWaitingQueueCount;
+          document.getElementById('kpiDual').textContent = data.metrics.dualVerifiedCount;
+        }
+
+        // Update Slots
+        if (data.slots && data.slots.length) {
+          document.getElementById('slotsContainer').innerHTML = data.slots.map(s => `
+            <div class="slot-card">
+              <div>
+                <div class="slot-vpa">${s.upi_id}</div>
+                <small style="color:#64748b">${s.payee_name || 'Merchant Account'}</small>
+              </div>
+              <span class="${s.is_active ? 'badge-success' : 'badge-queued'}">
+                ${s.is_active ? (s.is_slot_busy ? 'IN USE' : 'READY') : 'INACTIVE'}
+              </span>
+            </div>
+          `).join('');
+        }
+
+        // Update Sessions table
+        document.getElementById('txCountBadge').textContent = `${data.recentSessions.length} Sessions`;
+        if (data.recentSessions.length === 0) {
+          document.getElementById('txTableBody').innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8">No payment sessions recorded yet.</td></tr>`;
+        } else {
+          document.getElementById('txTableBody').innerHTML = data.recentSessions.map(s => {
+            let meta = {};
+            try { meta = JSON.parse(s.metadata || '{}'); } catch {}
+            const isSuccess = s.status === 'SUCCESS' || s.status === 'COMPLETED';
+            const amt = (s.amount_paise / 100).toFixed(2);
+            // Build stateless receipt URL from available data
+            const rp = new URLSearchParams({
+              paymentId: s.id, amount: amt, utr: meta.utr || meta.refId || meta.captureId || '-',
+              method: s.method || 'UPI', orderId: s.order_id || '', payer: meta.payerName || 'Customer',
+              at: new Date(s.completed_at || s.created_at).getTime()
+            });
+            return `
+              <tr style="${isSuccess ? 'background:rgba(21,128,61,.04)' : ''}">
+                <td><code style="font-family:'Fira Code', monospace; color:#0b63e5; font-size:11px">${s.id.slice(0,12)}...</code></td>
+                <td><strong>${s.order_id || '-'}</strong></td>
+                <td><strong>₹${amt}</strong></td>
+                <td><span style="font-weight:600">${s.method || '-'}</span></td>
+                <td><span class="${isSuccess ? 'badge-success' : 'badge-queued'}">${s.status}</span></td>
+                <td><code style="font-family:'Fira Code', monospace; font-size:11px">${meta.utr || meta.refId || meta.captureId || '-'}</code></td>
+                <td style="color:#64748b; font-size:11px">${new Date(s.completed_at || s.created_at).toLocaleString()}</td>
+                <td>
+                  <a href="/api/v1/receipt?${rp.toString()}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:#0b63e5; text-decoration:none; background:#eff6ff; padding:3px 8px; border-radius:6px; border:1px solid #bfdbfe;">
+                    📄 Receipt
+                  </a>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Update Observations
+        if (data.recentObservations) {
+          if (data.recentObservations.length === 0) {
+            document.getElementById('obsTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#94a3b8">No bank observation entries recorded yet.</td></tr>`;
+          } else {
+            document.getElementById('obsTableBody').innerHTML = data.recentObservations.map(o => `
+              <tr>
+                <td><code style="font-family:'Fira Code', monospace">${o.id.slice(0, 8)}...</code></td>
+                <td><code style="font-family:'Fira Code', monospace; color:#0b63e5; font-weight:700">${o.bank_reference_number || '-'}</code></td>
+                <td><strong>₹${(o.amount_paise / 100).toFixed(2)}</strong></td>
+                <td>${o.sender_vpa || 'Anonymous'}</td>
+                <td><span class="badge-success">${o.attribution_status || 'MATCHED'}</span></td>
+                <td style="color:#64748b; font-size:11px">${new Date(o.observed_at || o.created_at).toLocaleString()}</td>
+              </tr>
+            `).join('');
+          }
+        }
+
+      } catch (err) {
+        console.warn('Live operations error:', err);
+      }
+    }
+
+    // Replace the global function
+    window.fetchLiveTelemetry = fetchLiveTelemetryWithLocal;
+
     // Connect SSE for real-time live events
     try {
       const sse = new EventSource('/api/events');
-      sse.addEventListener('upi_payment_confirmed', () => fetchLiveTelemetry());
-      sse.addEventListener('settlement_stage', () => fetchLiveTelemetry());
-      sse.addEventListener('payment_success', () => fetchLiveTelemetry());
+      sse.addEventListener('upi_payment_confirmed', () => fetchLiveTelemetryWithLocal());
+      sse.addEventListener('settlement_stage', () => fetchLiveTelemetryWithLocal());
+      sse.addEventListener('payment_success', () => fetchLiveTelemetryWithLocal());
     } catch {}
 
-    fetchLiveTelemetry();
-    setInterval(fetchLiveTelemetry, 3000);
+    fetchLiveTelemetryWithLocal();
+    setInterval(fetchLiveTelemetryWithLocal, 3000);
   </script>
 </body>
 </html>
